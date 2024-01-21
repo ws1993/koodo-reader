@@ -4,8 +4,8 @@ import { Trans } from "react-i18next";
 import TextToSpeech from "../../textToSpeech";
 import StorageUtil from "../../../utils/serviceUtils/storageUtil";
 import { readerSettingList } from "../../../constants/settingList";
-import { isElectron } from "react-device-detect";
 import toast from "react-hot-toast";
+import BookUtil from "../../../utils/fileUtils/bookUtil";
 class SettingSwitch extends React.Component<
   SettingSwitchProps,
   SettingSwitchState
@@ -20,6 +20,7 @@ class SettingSwitch extends React.Component<
       isShadow: StorageUtil.getReaderConfig("isShadow") === "yes",
       isItalic: StorageUtil.getReaderConfig("isItalic") === "yes",
       isInvert: StorageUtil.getReaderConfig("isInvert") === "yes",
+      isBionic: StorageUtil.getReaderConfig("isBionic") === "yes",
       isHideBackground:
         StorageUtil.getReaderConfig("isHideBackground") === "yes",
       isHideFooter: StorageUtil.getReaderConfig("isHideFooter") === "yes",
@@ -32,11 +33,7 @@ class SettingSwitch extends React.Component<
   }
 
   _handleRest = () => {
-    if (isElectron) {
-      toast(this.props.t("Take effect at next startup"));
-    } else {
-      window.location.reload();
-    }
+    BookUtil.reloadBooks();
   };
 
   _handleChange = (stateName: string) => {
@@ -45,9 +42,9 @@ class SettingSwitch extends React.Component<
         stateName,
         this.state[stateName] ? "yes" : "no"
       );
-      toast(this.props.t("Change Successfully"));
-      setTimeout(() => {
-        this.props.renderBookFunc();
+      toast(this.props.t("Change successful"));
+      setTimeout(async () => {
+        await this.props.renderBookFunc();
       }, 500);
     });
   };
@@ -59,7 +56,7 @@ class SettingSwitch extends React.Component<
       this.state[stateName] ? "no" : "yes"
     );
 
-    toast(this.props.t("Change Successfully"));
+    toast(this.props.t("Change successful"));
     setTimeout(() => {
       this._handleRest();
     }, 500);
@@ -98,6 +95,9 @@ class SettingSwitch extends React.Component<
                     break;
                   case "isInvert":
                     this._handleChange("isInvert");
+                    break;
+                  case "isBionic":
+                    this._handleChange("isBionic");
                     break;
                   case "isHideFooter":
                     this.handleChange("isHideFooter");

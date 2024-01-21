@@ -13,6 +13,8 @@ const mapStateToProps = (state: stateType) => {
     bookmarks: state.reader.bookmarks,
     isCollapsed: state.sidebar.isCollapsed,
     deletedBooks: state.manager.deletedBooks,
+    mode: state.sidebar.mode,
+    shelfIndex: state.sidebar.shelfIndex,
   };
 };
 const actionCreator = {
@@ -23,4 +25,4 @@ const actionCreator = {
 export default connect(
   mapStateToProps,
   actionCreator
-)(withTranslation()(ImportLocal as any));
+)(withTranslation()(ImportLocal as any) as any);

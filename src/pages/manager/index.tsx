@@ -5,8 +5,10 @@ import {
   handleFetchNoteSortCode,
   handleFetchList,
   handleTipDialog,
+  handleDetailDialog,
   handleLoadingDialog,
   handleNewDialog,
+  handleFeedbackDialog,
   handleSetting,
   handleBackupDialog,
   handleFetchNotes,
@@ -33,15 +35,18 @@ const mapStateToProps = (state: stateType) => {
     dragItem: state.book.dragItem,
     shelfIndex: state.sidebar.shelfIndex,
     isOpenEditDialog: state.book.isOpenEditDialog,
+    isDetailDialog: state.manager.isDetailDialog,
     isOpenDeleteDialog: state.book.isOpenDeleteDialog,
     isOpenAddDialog: state.book.isOpenAddDialog,
     isSettingOpen: state.manager.isSettingOpen,
+    isOpenFeedbackDialog: state.manager.isOpenFeedbackDialog,
     isAboutOpen: state.manager.isAboutOpen,
     isBookSort: state.manager.isBookSort,
     isSortDisplay: state.manager.isSortDisplay,
     isShowLoading: state.manager.isShowLoading,
     isShowNew: state.manager.isShowNew,
     isTipDialog: state.manager.isTipDialog,
+    DetailDialog: state.manager.isDetailDialog,
     isBackup: state.backupPage.isBackup,
   };
 };
@@ -56,7 +61,9 @@ const actionCreator = {
   handleEditDialog,
   handleDeleteDialog,
   handleAddDialog,
+  handleFeedbackDialog,
   handleTipDialog,
+  handleDetailDialog,
   handleLoadingDialog,
   handleNewDialog,
   handleBackupDialog,
@@ -65,4 +72,4 @@ const actionCreator = {
 export default connect(
   mapStateToProps,
   actionCreator
-)(withTranslation()(withRouter(Manager)));
+)(withTranslation()(withRouter(Manager as any) as any) as any);

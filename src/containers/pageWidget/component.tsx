@@ -26,19 +26,22 @@ class Background extends React.Component<BackgroundProps, BackgroundState> {
       await this.handlePageNum(nextProps.htmlBook.rendition);
       nextProps.htmlBook.rendition.on("page-changed", async () => {
         await this.handlePageNum(nextProps.htmlBook.rendition);
-        await this.handleLocation();
+        this.handleLocation();
       });
     }
   }
-  handleLocation = async () => {
-    let position = await this.props.htmlBook.rendition.getPosition();
+  handleLocation = () => {
+    let position = this.props.htmlBook.rendition.getPosition();
     RecordLocation.recordHtmlLocation(
       this.props.currentBook.key,
       position.text,
       position.chapterTitle,
+      position.chapterDocIndex,
+      position.chapterHref,
       position.count,
       position.percentage,
-      position.cfi
+      position.cfi,
+      position.page
     );
   };
   async handlePageNum(rendition) {
@@ -110,7 +113,7 @@ class Background extends React.Component<BackgroundProps, BackgroundState> {
                   : {}
               }
             >
-              <Trans i18nKey="Book Page" count={this.state.prevPage}>
+              <Trans i18nKey="Book page" count={this.state.prevPage}>
                 Page
                 {{
                   count: this.state.prevPage,
@@ -122,7 +125,7 @@ class Background extends React.Component<BackgroundProps, BackgroundState> {
             this.state.nextPage > 0 &&
             !this.state.isSingle && (
               <p className="background-page-right">
-                <Trans i18nKey="Book Page" count={this.state.nextPage}>
+                <Trans i18nKey="Book page" count={this.state.nextPage}>
                   Page
                   {{
                     count: this.state.nextPage,

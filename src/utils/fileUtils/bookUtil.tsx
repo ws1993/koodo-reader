@@ -1,17 +1,14 @@
 import StorageUtil from "../serviceUtils/storageUtil";
 import { isElectron } from "react-device-detect";
-import localforage from "localforage";
+
 import BookModel from "../../model/Book";
 import toast from "react-hot-toast";
-import { getPDFCover } from "./pdfUtil";
-import chardet from "chardet";
+import { getPDFMetadata } from "./pdfUtil";
+import { copyArrayBuffer } from "../commonUtil";
 import iconv from "iconv-lite";
-import { xmlMetadata } from "./xmlUtil";
-// import { base64ArrayBuffer } from "./coverUtil";
+import { Buffer } from "buffer";
 declare var window: any;
-const { MobiRender, Azw3Render, EpubRender } = window.Kookit;
 
-// let Unrar = window.Unrar;
 class BookUtil {
   static addBook(key: string, buffer: ArrayBuffer) {
     if (isElectron) {
@@ -46,7 +43,7 @@ class BookUtil {
         };
       });
     } else {
-      return localforage.setItem(key, buffer);
+      return window.localforage.setItem(key, buffer);
     }
   }
   static deleteBook(key: string) {
@@ -69,7 +66,7 @@ class BookUtil {
         }
       });
     } else {
-      return localforage.removeItem(key);
+      return window.localforage.removeItem(key);
     }
   }
   static isBookExist(key: string, bookPath: string = "") {
@@ -87,13 +84,18 @@ class BookUtil {
           key
         );
 
-        if ((bookPath && fs.existsSync(bookPath)) || fs.existsSync(_bookPath)) {
+        if (key.startsWith("cache")) {
+          resolve(fs.existsSync(_bookPath));
+        } else if (
+          (bookPath && fs.existsSync(bookPath)) ||
+          fs.existsSync(_bookPath)
+        ) {
           resolve(true);
         } else {
           resolve(false);
         }
       } else {
-        localforage.getItem(key).then((result) => {
+        window.localforage.getItem(key).then((result) => {
           if (result) {
             resolve(true);
           } else {
@@ -122,10 +124,10 @@ class BookUtil {
           key
         );
         var data;
-        if (bookPath && fs.existsSync(bookPath)) {
-          data = fs.readFileSync(bookPath);
-        } else if (fs.existsSync(_bookPath)) {
+        if (fs.existsSync(_bookPath)) {
           data = fs.readFileSync(_bookPath);
+        } else if (bookPath && fs.existsSync(bookPath)) {
+          data = fs.readFileSync(bookPath);
         } else {
           resolve(false);
         }
@@ -142,12 +144,27 @@ class BookUtil {
         }
       });
     } else {
-      return localforage.getItem(key);
+      return window.localforage.getItem(key);
     }
   }
-  static async RedirectBook(book: BookModel) {
+  static FetchAllBooks(Books: BookModel[]) {
+    return Books.map((item) => {
+      return this.fetchBook(item.key, true, item.path);
+    });
+  }
+  static async RedirectBook(
+    book: BookModel,
+    t: (string) => string,
+    history: any
+  ) {
     if (!(await this.isBookExist(book.key, book.path))) {
-      toast.error("Book not exist");
+      toast.error(t("Book not exist"));
+      return;
+    }
+    if (StorageUtil.getReaderConfig("isOpenInMain") === "yes") {
+      history.push(
+        BookUtil.getBookUrl(book) + `?title=${book.name}&file=${book.key}`
+      );
       return;
     }
     let ref = book.format.toLowerCase();
@@ -155,9 +172,11 @@ class BookUtil {
     if (isElectron) {
       const { ipcRenderer } = window.require("electron");
       ipcRenderer.invoke("open-book", {
-        url: `${window.location.href.split("#")[0]}#/${ref}/${book.key}`,
+        url: `${window.location.href.split("#")[0]}#/${ref}/${book.key}?title=${
+          book.name
+        }&file=${book.key}`,
         isMergeWord:
-          book.format === "PDF" || book.format === "DJVU"
+          book.format === "PDF"
             ? "no"
             : StorageUtil.getReaderConfig("isMergeWord"),
         isFullscreen: StorageUtil.getReaderConfig("isAutoFullscreen"),
@@ -167,7 +186,7 @@ class BookUtil {
       window.open(
         `${window.location.href.split("#")[0]}#/${ref}/${book.key}?title=${
           book.name
-        }`
+        }&file=${book.key}`
       );
     }
   }
@@ -204,6 +223,61 @@ class BookUtil {
       return `./lib/pdf/web/viewer.html?file=${book.key}`;
     }
   }
+  static reloadBooks() {
+    if (isElectron) {
+      if (StorageUtil.getReaderConfig("isOpenInMain") === "yes") {
+        window.require("electron").ipcRenderer.invoke("reload-main", "ping");
+      } else {
+        window.require("electron").ipcRenderer.invoke("reload-reader", "ping");
+      }
+    } else {
+      window.location.reload();
+    }
+  }
+  static getRendtion = (
+    result: ArrayBuffer,
+    format: string,
+    readerMode: string,
+    charset: string
+  ) => {
+    let rendition;
+    if (format === "CACHE") {
+      rendition = new window.Kookit.CacheRender(result, readerMode);
+    } else if (format === "MOBI" || format === "AZW3" || format === "AZW") {
+      rendition = new window.Kookit.MobiRender(result, readerMode);
+    } else if (format === "EPUB") {
+      rendition = new window.Kookit.EpubRender(result, readerMode);
+    } else if (format === "TXT") {
+      let text = iconv.decode(Buffer.from(result), charset || "utf8");
+      rendition = new window.Kookit.TxtRender(text, readerMode);
+    } else if (format === "MD") {
+      rendition = new window.Kookit.MdRender(result, readerMode);
+    } else if (format === "FB2") {
+      rendition = new window.Kookit.Fb2Render(result, readerMode);
+    } else if (format === "DOCX") {
+      rendition = new window.Kookit.DocxRender(result, readerMode);
+    } else if (
+      format === "HTML" ||
+      format === "XHTML" ||
+      format === "MHTML" ||
+      format === "HTM" ||
+      format === "XML"
+    ) {
+      rendition = new window.Kookit.HtmlRender(result, readerMode, format);
+    } else if (
+      format === "CBR" ||
+      format === "CBT" ||
+      format === "CBZ" ||
+      format === "CB7"
+    ) {
+      rendition = new window.Kookit.ComicRender(
+        copyArrayBuffer(result),
+        readerMode,
+        format
+      );
+    }
+    return rendition;
+  };
   static generateBook(
     bookName: string,
     extension: string,
@@ -219,91 +293,105 @@ class BookUtil {
         author: string,
         publisher: string,
         description: string,
-        charset: string;
-      [name, author, description, publisher, charset] = [
+        charset: string,
+        page: number;
+      [name, author, description, publisher, charset, page] = [
         bookName,
-        "Unknown Author",
+        "Unknown author",
         "",
         "",
         "",
+        0,
       ];
+      let metadata: any;
+      let rendition = BookUtil.getRendtion(
+        file_content,
+        extension.toUpperCase(),
+        "",
+        ""
+      );
+
       switch (extension) {
         case "pdf":
-          cover = await getPDFCover(file_content);
+          metadata = await getPDFMetadata(copyArrayBuffer(file_content));
+          [name, author, publisher, cover, page] = [
+            metadata.name || bookName,
+            metadata.author || "Unknown author",
+            metadata.publisher || "",
+            metadata.cover || "",
+            metadata.pageCount || 0,
+          ];
           if (cover.indexOf("image") === -1) {
             cover = "";
           }
           break;
         case "epub":
-          let epubRendition = new EpubRender(
-            file_content,
-            "scroll",
-            StorageUtil.getReaderConfig("isSliding") === "yes" ? true : false
-          );
-          let metadata = await epubRendition.getMetadata();
+          metadata = await rendition.getMetadata();
           if (metadata === "timeout_error") {
             resolve("get_metadata_error");
             break;
-          } else if (!metadata.title) {
+          } else if (!metadata.name) {
             break;
           }
 
           [name, author, description, publisher, cover] = [
-            metadata.title,
-            metadata.creator,
-            metadata.description,
-            metadata.publisher,
-            metadata.cover,
+            metadata.name || bookName,
+            metadata.author || "Unknown author",
+            metadata.description || "",
+            metadata.publisher || "",
+            metadata.cover || "",
           ];
           if (cover.indexOf("image") === -1) {
             cover = "";
           }
           break;
         case "mobi":
-          let mobiRendition = new MobiRender(
-            file_content,
-            "scroll",
-            StorageUtil.getReaderConfig("isSliding") === "yes" ? true : false
-          );
-          if (mobiRendition.getMetadata().compression === 17480) {
-            resolve("parse_kindle_error");
-          }
-          break;
+        case "azw":
         case "azw3":
-          let azw3Rendition = new Azw3Render(
-            file_content,
-            "scroll",
-            StorageUtil.getReaderConfig("isSliding") === "yes" ? true : false
-          );
-          if (azw3Rendition.getMetadata().compression === 17480) {
-            resolve("parse_kindle_error");
-          }
+          metadata = await rendition.getMetadata();
+          [name, author, description, publisher, cover] = [
+            metadata.name || bookName,
+            metadata.author || "Unknown author",
+            metadata.description || "",
+            metadata.publisher || "",
+            metadata.cover || "",
+          ];
           break;
         case "fb2":
-          charset = chardet.detect(Buffer.from(file_content)) || "";
-          let fb2Str = iconv.decode(
-            Buffer.from(file_content),
-            charset || "utf8"
-          );
-          let fb2Obj: any = await xmlMetadata(fb2Str);
-          cover = fb2Obj.cover;
-          name = fb2Obj.name;
-          author = fb2Obj.author;
+          metadata = await rendition.getMetadata();
+          [name, author, description, publisher, cover] = [
+            metadata.name || bookName,
+            metadata.author || "Unknown author",
+            metadata.description || "",
+            metadata.publisher || "",
+            metadata.cover || "",
+          ];
           break;
-        // case "cbr":
-        //   let unrar = new Unrar(file_content);
-        //   let buffer = unrar.decompress(
-        //     unrar.getEntries().map((item: any) => item.name)[0]
-        //   );
-        //   cover = base64ArrayBuffer(buffer);
-        //   break;
-
+        case "cbr":
+        case "cbt":
+        case "cbz":
+        case "cb7":
+          metadata = await rendition.getMetadata();
+          cover = metadata.cover;
+          break;
+        case "txt":
+          metadata = await rendition.getMetadata(file_content);
+          charset = metadata.charset;
+          break;
         default:
           break;
       }
-
       let format = extension.toUpperCase();
       key = new Date().getTime() + "";
+      if (
+        StorageUtil.getReaderConfig("isPrecacheBook") === "yes" &&
+        extension !== "pdf"
+      ) {
+        let cache = await rendition.preCache(file_content);
+        if (cache !== "err") {
+          BookUtil.addBook("cache-" + key, cache);
+        }
+      }
       resolve(
         new BookModel(
           key,
@@ -315,6 +403,7 @@ class BookUtil {
           format,
           publisher,
           size,
+          page,
           path,
           charset
         )

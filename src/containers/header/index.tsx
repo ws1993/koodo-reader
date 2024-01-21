@@ -7,6 +7,7 @@ import {
   handleTipDialog,
   handleTip,
   handleBackupDialog,
+  handleFeedbackDialog,
   handleFetchBooks,
   handleFetchNotes,
   handleFetchBookmarks,
@@ -20,9 +21,9 @@ const mapStateToProps = (state: stateType) => {
     isAboutOpen: state.manager.isAboutOpen,
     bookmarks: state.reader.bookmarks,
     books: state.manager.books,
+    isCollapsed: state.sidebar.isCollapsed,
     isNewWarning: state.manager.isNewWarning,
     notes: state.reader.notes,
-    isCollapsed: state.sidebar.isCollapsed,
 
     isSortDisplay: state.manager.isSortDisplay,
   };
@@ -32,6 +33,7 @@ const actionCreator = {
   handleBackupDialog,
   handleSetting,
   handleAbout,
+  handleFeedbackDialog,
   handleTipDialog,
   handleTip,
   handleFetchBooks,
@@ -41,4 +43,4 @@ const actionCreator = {
 export default connect(
   mapStateToProps,
   actionCreator
-)(withTranslation()(Header as any));
+)(withTranslation()(Header as any) as any);

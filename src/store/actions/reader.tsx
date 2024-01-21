@@ -1,8 +1,8 @@
-import localforage from "localforage";
 import NoteModel from "../../model/Note";
 import BookmarkModel from "../../model/Bookmark";
 import HtmlBookModel from "../../model/HtmlBook";
 import AddTrash from "../../utils/readUtils/addTrash";
+declare var window: any;
 export function handleNotes(notes: NoteModel[]) {
   return { type: "HANDLE_NOTES", payload: notes };
 }
@@ -35,7 +35,7 @@ export function handleNoteKey(key: string) {
 }
 export function handleFetchNotes() {
   return (dispatch: (arg0: { type: string; payload: NoteModel[] }) => void) => {
-    localforage.getItem("notes", (err, value) => {
+    window.localforage.getItem("notes", (err, value) => {
       let noteArr: any;
       if (value === null || value === []) {
         noteArr = [];
@@ -57,24 +57,12 @@ export function handleFetchNotes() {
     });
   };
 }
-export function flatChapter(chapters: any) {
-  let newChapter: any = [];
-  for (let i = 0; i < chapters.length; i++) {
-    if (chapters[i].subitems[0]) {
-      newChapter.push(chapters[i]);
-      newChapter = newChapter.concat(flatChapter(chapters[i].subitems));
-    } else {
-      newChapter.push(chapters[i]);
-    }
-  }
-  return newChapter;
-}
 
 export function handleFetchBookmarks() {
   return (
     dispatch: (arg0: { type: string; payload: BookmarkModel[] }) => void
   ) => {
-    localforage.getItem("bookmarks", (err, value) => {
+    window.localforage.getItem("bookmarks", (err, value) => {
       let bookmarkArr: any;
       if (value === null || value === []) {
         bookmarkArr = [];

@@ -6,6 +6,9 @@ import {
   handleHtmlBook,
   handleRenderBookFunc,
   handleFetchBooks,
+  handleMenuMode,
+  handleNoteKey,
+  handleOpenMenu,
   handleCurrentChapter,
   handleCurrentChapterIndex,
   handleFetchNotes,
@@ -24,7 +27,10 @@ const mapStateToProps = (state: stateType) => {
     isReading: state.book.isReading,
     renderNoteFunc: state.book.renderNoteFunc,
     htmlBook: state.reader.htmlBook,
+    isOpenMenu: state.viewArea.isOpenMenu,
     books: state.manager.books,
+    notes: state.reader.notes,
+    menuMode: state.viewArea.menuMode,
   };
 };
 const actionCreator = {
@@ -34,14 +40,17 @@ const actionCreator = {
   handleHtmlBook,
   handleRenderBookFunc,
   handleFetchBooks,
+  handleOpenMenu,
   handleCurrentChapter,
+  handleNoteKey,
   handleCurrentChapterIndex,
   handleFetchNotes,
   handleFetchBookmarks,
   handleFetchPercentage,
   handlePercentage,
+  handleMenuMode,
 };
 export default connect(
   mapStateToProps,
   actionCreator
-)(withTranslation()(Viewer as any));
+)(withTranslation()(Viewer as any) as any);

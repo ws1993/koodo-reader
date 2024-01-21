@@ -2,16 +2,18 @@ import React from "react";
 import "./header.css";
 import SearchBox from "../../components/searchBox";
 import ImportLocal from "../../components/importLocal";
-import { Trans } from "react-i18next";
 import { HeaderProps, HeaderState } from "./interface";
 import StorageUtil from "../../utils/serviceUtils/storageUtil";
 import UpdateInfo from "../../components/dialogs/updateDialog";
 import { restore } from "../../utils/syncUtils/restoreUtil";
 import { backup } from "../../utils/syncUtils/backupUtil";
-import { Tooltip } from "react-tippy";
 import { isElectron } from "react-device-detect";
 import { syncData } from "../../utils/syncUtils/common";
 import toast from "react-hot-toast";
+import { Trans } from "react-i18next";
+import { checkStableUpdate } from "../../utils/commonUtil";
+import packageInfo from "../../../package.json";
+
 class Header extends React.Component<HeaderProps, HeaderState> {
   constructor(props: HeaderProps) {
     super(props);
@@ -22,9 +24,12 @@ class Header extends React.Component<HeaderProps, HeaderState> {
       isNewVersion: false,
       width: document.body.clientWidth,
       isdataChange: false,
+      isDeveloperVer: false,
     };
   }
-  componentDidMount() {
+  async componentDidMount() {
+    // isElectron &&
+    //   (await window.require("electron").ipcRenderer.invoke("s3-download"));
     if (isElectron) {
       const fs = window.require("fs");
       const path = window.require("path");
@@ -48,7 +53,16 @@ class Header extends React.Component<HeaderProps, HeaderState> {
           StorageUtil.getReaderConfig("storageLocation")
         );
       }
-
+      try {
+        let stableLog = await checkStableUpdate();
+        if (packageInfo.version.localeCompare(stableLog.version) > 0) {
+          this.setState({ isDeveloperVer: true });
+          // this.props.handleFeedbackDialog(true);
+          // return;
+        }
+      } catch (error) {
+        console.log(error);
+      }
       //Check for data update
       let storageLocation = localStorage.getItem("storageLocation")
         ? localStorage.getItem("storageLocation")
@@ -76,7 +90,6 @@ class Header extends React.Component<HeaderProps, HeaderState> {
         }
       });
     }
-
     window.addEventListener("resize", () => {
       this.setState({ width: document.body.clientWidth });
     });
@@ -136,7 +149,7 @@ class Header extends React.Component<HeaderProps, HeaderState> {
     if (!result) {
       toast.error(this.props.t("Sync Failed"));
     } else {
-      toast.success(this.props.t("Sync Successfully"));
+      toast.success(this.props.t("Synchronisation successful"));
     }
   };
   handleSync = () => {
@@ -190,18 +203,27 @@ class Header extends React.Component<HeaderProps, HeaderState> {
       toast.error(this.props.t("Sync Failed"));
     } else {
       syncData(result as Blob, this.props.books, true);
-      toast.success(this.props.t("Sync Successfully"));
+      toast.success(this.props.t("Synchronisation successful"));
     }
   };
 
   render() {
     return (
-      <div className="header">
-        <div className="header-search-container">
+      <div
+        className="header"
+        style={this.props.isCollapsed ? { marginLeft: "40px" } : {}}
+      >
+        <div
+          className="header-search-container"
+          style={this.props.isCollapsed ? { width: "369px" } : {}}
+        >
           <SearchBox />
         </div>
 
-        <>
+        <div
+          className="setting-icon-parrent"
+          style={this.props.isCollapsed ? { marginLeft: "430px" } : {}}
+        >
           <div
             className="setting-icon-container"
             onClick={() => {
@@ -210,16 +232,9 @@ class Header extends React.Component<HeaderProps, HeaderState> {
             onMouseLeave={() => {
               this.props.handleSortDisplay(false);
             }}
-            style={{ left: "490px", top: "18px" }}
+            style={{ top: "18px" }}
           >
-            <Tooltip
-              title={this.props.t("Sort by")}
-              position="top"
-              trigger="mouseenter"
-              distance={20}
-            >
-              <span className="icon-sort-desc header-sort-icon"></span>
-            </Tooltip>
+            <span className="icon-sort-desc header-sort-icon"></span>
           </div>
           <div
             className="setting-icon-container"
@@ -229,19 +244,26 @@ class Header extends React.Component<HeaderProps, HeaderState> {
             onMouseLeave={() => {
               this.props.handleAbout(false);
             }}
+            style={{ marginTop: "2px" }}
           >
-            <Tooltip
-              title={this.props.t("Setting")}
-              position="top"
-              trigger="mouseenter"
-            >
-              <span
-                className="icon-setting setting-icon"
-                style={
-                  this.props.isNewWarning ? { color: "rgb(35, 170, 242)" } : {}
-                }
-              ></span>
-            </Tooltip>
+            <span
+              className="icon-setting setting-icon"
+              style={
+                this.props.isNewWarning ? { color: "rgb(35, 170, 242)" } : {}
+              }
+            ></span>
+          </div>
+          <div
+            className="setting-icon-container"
+            onClick={() => {
+              this.props.handleBackupDialog(true);
+            }}
+            onMouseLeave={() => {
+              this.props.handleSortDisplay(false);
+            }}
+            style={{ marginTop: "1px" }}
+          >
+            <span className="icon-archive header-archive-icon"></span>
           </div>
           {isElectron && (
             <div
@@ -250,63 +272,33 @@ class Header extends React.Component<HeaderProps, HeaderState> {
                 // this.syncFromLocation();
                 this.handleSync();
               }}
-              style={{ left: "635px" }}
-            >
-              <Tooltip
-                title={this.props.t(
-                  this.state.isdataChange
-                    ? "Data change detected, whether to update?"
-                    : "Sync"
-                )}
-                position="top"
-                trigger="mouseenter"
-              >
-                <span
-                  className="icon-sync setting-icon"
-                  style={
-                    this.state.isdataChange
-                      ? { color: "rgb(35, 170, 242)" }
-                      : {}
-                  }
-                ></span>
-              </Tooltip>
-            </div>
-          )}
-        </>
-
-        <div
-          className="import-from-cloud"
-          onClick={() => {
-            this.props.handleBackupDialog(true);
-          }}
-          style={
-            this.props.isCollapsed && document.body.clientWidth < 950
-              ? { width: "42px" }
-              : {}
-          }
-        >
-          <div className="animation-mask"></div>
-          {this.props.isCollapsed && this.state.width < 950 ? (
-            <Tooltip
-              title={this.props.t("Backup")}
-              position="top"
-              trigger="mouseenter"
+              style={{ marginTop: "2px" }}
             >
               <span
-                className="icon-share"
-                style={{ fontSize: "15px", fontWeight: 600 }}
+                className="icon-sync setting-icon"
+                style={
+                  this.state.isdataChange ? { color: "rgb(35, 170, 242)" } : {}
+                }
               ></span>
-            </Tooltip>
-          ) : (
-            <Trans>Backup</Trans>
+            </div>
           )}
         </div>
+        {this.state.isDeveloperVer && (
+          <div
+            className="header-report-container"
+            onClick={() => {
+              this.props.handleFeedbackDialog(true);
+            }}
+          >
+            <Trans>Report</Trans>
+          </div>
+        )}
         <ImportLocal
           {...{
             handleDrag: this.props.handleDrag,
           }}
         />
-        {isElectron && <UpdateInfo />}
+        <UpdateInfo />
       </div>
     );
   }

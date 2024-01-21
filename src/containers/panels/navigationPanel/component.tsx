@@ -6,9 +6,9 @@ import { Trans } from "react-i18next";
 import { NavigationPanelProps, NavigationPanelState } from "./interface";
 import SearchBox from "../../../components/searchBox";
 import Parser from "html-react-parser";
+import * as DOMPurify from "dompurify";
 import EmptyCover from "../../../components/emptyCover";
 import StorageUtil from "../../../utils/serviceUtils/storageUtil";
-import { Tooltip } from "react-tippy";
 
 class NavigationPanel extends React.Component<
   NavigationPanelProps,
@@ -70,18 +70,35 @@ class NavigationPanel extends React.Component<
             key={index}
             onClick={async () => {
               let bookLocation = JSON.parse(item.cfi) || {};
-              await this.props.htmlBook.rendition.goToPosition(
-                JSON.stringify({
-                  text: bookLocation.text,
-                  chapterTitle: bookLocation.chapterTitle,
-                  count: bookLocation.count,
-                  percentage: bookLocation.percentage,
-                  cfi: bookLocation.cfi,
-                })
-              );
+              //compatile with lower version(1.5.1)
+              if (bookLocation.cfi) {
+                await this.props.htmlBook.rendition.goToChapter(
+                  bookLocation.chapterDocIndex,
+                  bookLocation.chapterHref,
+                  bookLocation.chapterTitle
+                );
+              } else {
+                await this.props.htmlBook.rendition.goToPosition(
+                  JSON.stringify({
+                    text: bookLocation.text,
+                    chapterTitle: bookLocation.chapterTitle,
+                    chapterDocIndex: bookLocation.chapterDocIndex,
+                    chapterHref: bookLocation.chapterHref,
+                    count: bookLocation.count,
+                    percentage: bookLocation.percentage,
+                    cfi: bookLocation.cfi,
+                    page: bookLocation.page,
+                  })
+                );
+                let style = "background: #f3a6a68c";
+                this.props.htmlBook.rendition.highlightNode(
+                  bookLocation.text,
+                  style
+                );
+              }
             }}
           >
-            {Parser(item.excerpt)}
+            {Parser(DOMPurify.sanitize(item.excerpt))}
           </li>
         );
       });
@@ -176,15 +193,12 @@ class NavigationPanel extends React.Component<
               <span className="icon-close"></span>
             </div>
 
-            <div
-              className="header-search-container"
-              style={this.state.isSearch ? { left: 40 } : {}}
-            >
+            <div className="header-search-container">
               <div
                 className="navigation-search-title"
                 style={{ height: "20px", margin: "0px 25px 13px" }}
               >
-                <Trans>Search in the book</Trans>
+                <Trans>Search in the Book</Trans>
               </div>
               <SearchBox {...searchProps} />
             </div>
@@ -198,28 +212,16 @@ class NavigationPanel extends React.Component<
         ) : (
           <>
             <div className="navigation-header">
-              <Tooltip
-                title={this.props.t(this.state.isNavLocked ? "Unlock" : "Lock")}
-                position="bottom"
-                trigger="mouseenter"
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  right: 0,
-                  height: "30px",
+              <span
+                className={
+                  this.state.isNavLocked
+                    ? "icon-lock nav-lock-icon"
+                    : "icon-unlock nav-lock-icon"
+                }
+                onClick={() => {
+                  this.handleLock();
                 }}
-              >
-                <span
-                  className={
-                    this.state.isNavLocked
-                      ? "icon-lock nav-lock-icon"
-                      : "icon-unlock nav-lock-icon"
-                  }
-                  onClick={() => {
-                    this.handleLock();
-                  }}
-                ></span>
-              </Tooltip>
+              ></span>
 
               {this.props.currentBook.cover &&
               this.props.currentBook.cover !== "noCover" ? (
@@ -246,11 +248,11 @@ class NavigationPanel extends React.Component<
                 <Trans>
                   {this.props.currentBook.author
                     ? this.props.currentBook.author
-                    : "Unknown Author"}
+                    : "Unknown author"}
                 </Trans>
               </p>
               <span className="reading-duration">
-                <Trans>Reading Time</Trans>: {Math.floor(this.props.time / 60)}
+                <Trans>Reading time</Trans>: {Math.floor(this.props.time / 60)}
                 &nbsp; min
               </span>
               <div className="navigation-search-box">
@@ -259,7 +261,7 @@ class NavigationPanel extends React.Component<
 
               <div className="navigation-navigation">
                 <span
-                  className="book-content-title"
+                  className="book-bookmark-title"
                   onClick={() => {
                     this.handleChangeTab("contents");
                   }}

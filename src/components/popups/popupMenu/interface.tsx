@@ -13,9 +13,7 @@ export interface PopupMenuProps {
   // cfiRange: any;
   rect: any;
   noteKey: string;
-  pageWidth: number;
-  pageHeight: number;
-  chapterIndex: number;
+  chapterDocIndex: number;
   chapter: string;
   handleNoteKey: (key: string) => void;
   t: (title: string) => string;
@@ -26,6 +24,7 @@ export interface PopupMenuProps {
 }
 export interface PopupMenuStates {
   deleteKey: string;
+  isRightEdge: boolean;
   // cfiRange: string;
   rect: DOMRect | null;
 }

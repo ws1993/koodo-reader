@@ -1,15 +1,15 @@
 import StorageUtil from "./storageUtil";
 import RecordLocation from "../readUtils/recordLocation";
 import { isElectron } from "react-device-detect";
-import { getIframeDoc } from "./docUtil";
-let Hammer = (window as any).Hammer;
+import { getIframeDoc, getIframeWin } from "./docUtil";
+declare var window: any;
 declare var document: any;
 const sleep = (ms: number) => {
   return new Promise((resolve) => setTimeout(resolve, ms));
 };
 
 let throttleTime =
-  StorageUtil.getReaderConfig("isSliding") === "yes" ? 1000 : 100;
+  StorageUtil.getReaderConfig("isSliding") === "yes" ? 1000 : 200;
 export const getSelection = () => {
   let doc = getIframeDoc();
   if (!doc) return;
@@ -20,70 +20,48 @@ export const getSelection = () => {
   return text || "";
 };
 let lock = false; //prevent from clicking too fasts
-const arrowKeys = (rendition: any, keyCode: number, event: any) => {
-  if (
-    document.querySelector(".editor-box") ||
-    document.querySelector(".navigation-search-title")
-  ) {
+const arrowKeys = async (
+  rendition: any,
+  keyCode: number,
+  event: any,
+  readerMode: string
+) => {
+  if (document.querySelector(".editor-box")) {
     return;
   }
-
-  if (lock) return;
-  if (keyCode === 37 || keyCode === 38) {
+  if (readerMode === "scroll" && (keyCode === 38 || keyCode === 40)) {
+  } else if (keyCode === 37 || keyCode === 38) {
     event.preventDefault();
-    rendition.prev();
-
-    lock = true;
-    setTimeout(function () {
-      lock = false;
-    }, throttleTime);
-    return false;
-  }
-  if (keyCode === 39 || keyCode === 40 || keyCode === 32) {
+    await rendition.prev();
+  } else if (keyCode === 39 || keyCode === 40) {
     event.preventDefault();
-    rendition.next();
-    lock = true;
-    setTimeout(function () {
-      lock = false;
-    }, throttleTime);
-    return false;
+    await rendition.next();
   }
-  handleShortcut(event, keyCode);
+  handleShortcut(event);
 };
 
-const mouseChrome = (rendition: any, deltaY: number) => {
-  if (lock) return;
+const mouseChrome = async (rendition: any, deltaY: number) => {
   if (deltaY < 0) {
-    rendition.prev();
-    lock = true;
-    setTimeout(function () {
-      lock = false;
-    }, throttleTime);
-    return false;
+    await rendition.prev();
   }
   if (deltaY > 0) {
-    rendition.next();
-    lock = true;
-    setTimeout(function () {
-      lock = false;
-    }, throttleTime);
-    return false;
+    await rendition.next();
   }
 };
 
-const handleShortcut = (event: any, keyCode: number) => {
-  if (keyCode === 9) {
+const handleShortcut = (event: any) => {
+  if (event.keyCode === 9) {
     if (isElectron) {
       event.preventDefault();
       window.require("electron").ipcRenderer.invoke("hide-reader", "ping");
     }
   }
-  if (keyCode === 27) {
+  if (event.keyCode === 27) {
     if (isElectron) {
       StorageUtil.setReaderConfig("isFullscreen", "no");
     }
   }
-  if (keyCode === 122) {
+  if (event.keyCode === 122) {
     if (isElectron) {
       event.preventDefault();
       if (StorageUtil.getReaderConfig("isFullscreen") === "yes") {
@@ -99,7 +77,7 @@ const handleShortcut = (event: any, keyCode: number) => {
       }
     }
   }
-  if (keyCode === 123) {
+  if (event.keyCode === 123) {
     if (isElectron) {
       event.preventDefault();
       StorageUtil.setReaderConfig(
@@ -109,42 +87,29 @@ const handleShortcut = (event: any, keyCode: number) => {
       window.require("electron").ipcRenderer.invoke("switch-moyu", "ping");
     }
   }
-  lock = true;
-  setTimeout(function () {
-    lock = false;
-  }, throttleTime);
-  return false;
 };
 
-const gesture = (rendition: any, type: string) => {
-  if (lock) return;
+const gesture = async (rendition: any, type: string) => {
   if (type === "panleft" || type === "panup") {
-    rendition.next();
-    lock = true;
-    setTimeout(function () {
-      lock = false;
-    }, throttleTime);
-    return false;
+    await rendition.next();
   }
   if (type === "panright" || type === "pandown") {
-    rendition.prev();
-    lock = true;
-    setTimeout(function () {
-      lock = false;
-    }, throttleTime);
-    return false;
+    await rendition.prev();
   }
 };
 
-const handleLocation = async (key: string, rendition: any) => {
-  let position = await rendition.getPosition();
+const handleLocation = (key: string, rendition: any) => {
+  let position = rendition.getPosition();
   RecordLocation.recordHtmlLocation(
     key,
     position.text,
     position.chapterTitle,
+    position.chapterDocIndex,
+    position.chapterHref,
     position.count,
     position.percentage,
-    position.cfi
+    position.cfi,
+    position.page
   );
 };
 export const bindHtmlEvent = (
@@ -154,39 +119,49 @@ export const bindHtmlEvent = (
   readerMode: string = ""
 ) => {
   doc.addEventListener("keydown", async (event) => {
-    arrowKeys(rendition, event.keyCode, event);
-    await handleLocation(key, rendition);
+    if (lock) return;
+    lock = true;
+    await arrowKeys(rendition, event.keyCode, event, readerMode);
+    handleLocation(key, rendition);
+    setTimeout(() => (lock = false), throttleTime);
   });
   //判断是否正在使用笔记本电脑的的触控板
-
   doc.addEventListener(
     "wheel",
     async (event) => {
+      if (lock) return;
+      lock = true;
       if (readerMode === "scroll") {
         await sleep(200);
-        rendition.record();
+        await rendition.record();
       } else {
-        Math.abs(event.deltaX) === 0 && mouseChrome(rendition, event.deltaY);
+        if (Math.abs(event.deltaX) === 0) {
+          await mouseChrome(rendition, event.deltaY);
+        }
       }
-
-      await handleLocation(key, rendition);
+      handleLocation(key, rendition);
+      setTimeout(() => (lock = false), throttleTime);
     },
     false
   );
 
   window.addEventListener("keydown", async (event) => {
-    arrowKeys(rendition, event.keyCode, event);
+    if (lock) return;
+    lock = true;
+    await arrowKeys(rendition, event.keyCode, event, readerMode);
     //使用Key判断是否是htmlBook
-
-    await handleLocation(key, rendition);
+    handleLocation(key, rendition);
+    setTimeout(() => (lock = false), throttleTime);
   });
 
   if (StorageUtil.getReaderConfig("isTouch") === "yes") {
-    const mc = new Hammer(doc);
+    const mc = new window.Hammer(doc);
     mc.on("panleft panright panup pandown", async (event: any) => {
-      gesture(rendition, event.type);
-
-      await handleLocation(key, rendition);
+      if (lock) return;
+      lock = true;
+      await gesture(rendition, event.type);
+      handleLocation(key, rendition);
+      setTimeout(() => (lock = false), throttleTime);
     });
   }
 };
@@ -196,6 +171,9 @@ export const HtmlMouseEvent = (
   readerMode: string
 ) => {
   rendition.on("rendered", () => {
+    let iframe = getIframeWin();
+    if (!iframe) return;
+    iframe?.focus();
     let doc = getIframeDoc();
     if (!doc) return;
     lock = false;
@@ -210,11 +188,9 @@ export const pdfMouseEvent = () => {
   let doc: any = iframe.contentWindow || iframe.contentDocument?.defaultView;
 
   doc.document.addEventListener("keydown", (event) => {
-    handleShortcut(event, event.keyCode);
-  });
-};
-export const djvuMouseEvent = () => {
-  document.addEventListener("keydown", (event) => {
-    handleShortcut(event, event.keyCode);
+    if (lock) return;
+    lock = true;
+    handleShortcut(event);
+    setTimeout(() => (lock = false), throttleTime);
   });
 };

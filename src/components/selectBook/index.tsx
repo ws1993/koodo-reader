@@ -12,6 +12,8 @@ import SelectBook from "./component";
 const mappropsToProps = (state: stateType) => {
   return {
     books: state.manager.books,
+    notes: state.reader.notes,
+    deletedBooks: state.manager.deletedBooks,
     selectedBooks: state.manager.selectedBooks,
     isCollapsed: state.sidebar.isCollapsed,
     isSelectBook: state.manager.isSelectBook,
@@ -26,4 +28,4 @@ const actionCreator = {
 export default connect(
   mappropsToProps,
   actionCreator
-)(withTranslation()(SelectBook as any));
+)(withTranslation()(SelectBook as any) as any);

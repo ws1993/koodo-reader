@@ -1,6 +1,7 @@
 import StorageUtil from "./storageUtil";
-import Chinese from "chinese-s2t";
 import { getIframeDoc } from "./docUtil";
+declare var window: any;
+
 export const tsTransform = () => {
   let doc = getIframeDoc();
   if (!doc) return;
@@ -15,7 +16,7 @@ export const tsTransform = () => {
       doc.querySelectorAll("p").forEach((item) => {
         item.innerHTML = item.innerHTML
           .split("")
-          .map((item) => Chinese.s2t(item))
+          .map((item) => window.ChineseS2T.s2t(item))
           .join("");
         // item.innerHTML = item.innerHTML.replace(
         //   item.innerText,
@@ -26,7 +27,7 @@ export const tsTransform = () => {
       doc.querySelectorAll("p").forEach((item) => {
         item.innerHTML = item.innerHTML
           .split("")
-          .map((item) => Chinese.t2s(item))
+          .map((item) => window.ChineseS2T.t2s(item))
           .join("");
       });
     }

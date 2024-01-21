@@ -6,6 +6,7 @@ import PopupTrans from "./component";
 const mapStateToProps = (state: stateType) => {
   return {
     originalText: state.reader.originalText,
+    noteKey: state.reader.noteKey,
   };
 };
 const actionCreator = {
@@ -15,4 +16,4 @@ const actionCreator = {
 export default connect(
   mapStateToProps,
   actionCreator
-)(withTranslation()(PopupTrans as any));
+)(withTranslation()(PopupTrans as any) as any);

@@ -1,17 +1,18 @@
 import React from "react";
 import ShelfUtil from "../../utils/readUtils/shelfUtil";
 import { Trans } from "react-i18next";
-import { ShelfChooserProps, ShelfChooserState } from "./interface";
-import localforage from "localforage";
+import { ShelfSelectorProps, ShelfSelectorState } from "./interface";
+
 import DeletePopup from "../dialogs/deletePopup";
 import { withRouter } from "react-router-dom";
 import { backup } from "../../utils/syncUtils/backupUtil";
 import { isElectron } from "react-device-detect";
-class ShelfChooser extends React.Component<
-  ShelfChooserProps,
-  ShelfChooserState
+declare var window: any;
+class ShelfSelector extends React.Component<
+  ShelfSelectorProps,
+  ShelfSelectorState
 > {
-  constructor(props: ShelfChooserProps) {
+  constructor(props: ShelfSelectorProps) {
     super(props);
     this.state = {
       shelfIndex: 0,
@@ -41,6 +42,9 @@ class ShelfChooser extends React.Component<
       this.props.handleMode("shelf");
     });
   };
+  handleDeletePopup = (isOpenDelete: boolean) => {
+    this.setState({ isOpenDelete });
+  };
   renderShelfList = () => {
     let shelfList = ShelfUtil.getShelf();
     let shelfTitle = Object.keys(shelfList);
@@ -58,13 +62,11 @@ class ShelfChooser extends React.Component<
       );
     });
   };
-  handleDeletePopup = (isOpenDelete: boolean) => {
-    this.setState({ isOpenDelete });
-  };
+
   render() {
     if (isElectron) {
       //兼容之前的版本
-      localforage.getItem(this.props.books[0].key).then((result) => {
+      window.localforage.getItem(this.props.books[0].key).then((result) => {
         if (result) {
           backup(
             this.props.books,
@@ -87,11 +89,11 @@ class ShelfChooser extends React.Component<
     return (
       <>
         {this.state.isOpenDelete && <DeletePopup {...deletePopupProps} />}
-        <div
-          className="booklist-shelf-container"
-          style={this.props.isCollapsed ? {} : { left: "calc(50% - 60px)" }}
-        >
-          <p className="general-setting-title" style={{ display: "inline" }}>
+        <div className="booklist-shelf-container">
+          <p
+            className="general-setting-title"
+            style={{ float: "left", height: "100%" }}
+          >
             <Trans>Shelf</Trans>
           </p>
           <select
@@ -116,4 +118,4 @@ class ShelfChooser extends React.Component<
   }
 }
 
-export default withRouter(ShelfChooser);
+export default withRouter(ShelfSelector as any);

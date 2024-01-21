@@ -2,90 +2,99 @@
 import React from "react";
 import "./popupNote.css";
 import Note from "../../../model/Note";
-import localforage from "localforage";
+
 import { PopupNoteProps, PopupNoteState } from "./interface";
 import RecordLocation from "../../../utils/readUtils/recordLocation";
 import NoteTag from "../../noteTag";
 import NoteModel from "../../../model/Note";
 import { Trans } from "react-i18next";
 import toast from "react-hot-toast";
-import { getHightlightCoords } from "../../../utils/fileUtils/pdfUtil";
-import { getPDFIframeDoc } from "../../../utils/serviceUtils/docUtil";
+import {
+  getHightlightCoords,
+  removePDFHighlight,
+} from "../../../utils/fileUtils/pdfUtil";
+import { getIframeDoc } from "../../../utils/serviceUtils/docUtil";
+import {
+  createOneNote,
+  removeOneNote,
+} from "../../../utils/serviceUtils/noteUtil";
+import { classes } from "../../../constants/themeList";
 declare var window: any;
-let classes = [
-  "color-0",
-  "color-1",
-  "color-2",
-  "color-3",
-  "line-0",
-  "line-1",
-  "line-2",
-  "line-3",
-];
+
 class PopupNote extends React.Component<PopupNoteProps, PopupNoteState> {
   constructor(props: PopupNoteProps) {
     super(props);
-    this.state = { tag: [] };
+    this.state = { tag: [], text: "" };
   }
   componentDidMount() {
     let textArea: any = document.querySelector(".editor-box");
     textArea && textArea.focus();
+    if (this.props.noteKey) {
+      let noteIndex = window._.findLastIndex(this.props.notes, {
+        key: this.props.noteKey,
+      });
+      this.setState({
+        text: this.props.notes[noteIndex].text,
+      });
+      textArea.value = this.props.notes[noteIndex].notes;
+    } else {
+      let doc = getIframeDoc();
+      if (!doc) {
+        return;
+      }
+      let text = doc.getSelection()?.toString();
+      if (!text) {
+        return;
+      }
+      text = text.replace(/\s\s/g, "");
+      text = text.replace(/\r/g, "");
+      text = text.replace(/\n/g, "");
+      text = text.replace(/\t/g, "");
+      text = text.replace(/\f/g, "");
+      this.setState({ text });
+    }
   }
   handleTag = (tag: string[]) => {
     this.setState({ tag });
   };
-  removePDFHighlight = (selected: any, colorCode: string, noteKey: string) => {
-    let iWin = getPDFIframeDoc();
-    if (!iWin) return;
-    var pageIndex = selected.page;
-    if (!iWin.PDFViewerApplication.pdfViewer) return;
-    var page = iWin.PDFViewerApplication.pdfViewer.getPageView(pageIndex);
-    if (page && page.div && page.textLayer && page.textLayer.textLayerDiv) {
-      var pageElement =
-        colorCode.indexOf("color") > -1
-          ? page.textLayer.textLayerDiv
-          : page.div;
-      let noteElements = pageElement.querySelectorAll(".pdf-note");
-      noteElements.forEach((item: Element) => {
-        if (item.getAttribute("key") === noteKey) {
-          item.parentNode?.removeChild(item);
-        }
-      });
-    }
+
+  handleNoteClick = (event: Event) => {
+    this.props.handleNoteKey((event.target as any).dataset.key);
+    this.props.handleMenuMode("note");
+    this.props.handleOpenMenu(true);
   };
   createNote() {
     let notes = (document.querySelector(".editor-box") as HTMLInputElement)
       .value;
+    let cfi = "";
+    if (this.props.currentBook.format === "PDF") {
+      cfi = JSON.stringify(
+        RecordLocation.getPDFLocation(this.props.currentBook.md5.split("-")[0])
+      );
+    } else {
+      cfi = JSON.stringify(
+        RecordLocation.getHtmlLocation(this.props.currentBook.key)
+      );
+    }
     if (this.props.noteKey) {
       //编辑笔记
       this.props.notes.forEach((item) => {
         if (item.key === this.props.noteKey) {
           item.notes = notes;
           item.tag = this.state.tag;
+          item.cfi = cfi;
         }
       });
-      localforage.setItem("notes", this.props.notes).then(() => {
+      window.localforage.setItem("notes", this.props.notes).then(() => {
         this.props.handleOpenMenu(false);
-        toast.success(this.props.t("Add Successfully"));
+        toast.success(this.props.t("Addition successful"));
         this.props.handleFetchNotes();
-        this.props.handleMenuMode("highlight");
+        this.props.handleMenuMode("");
         this.props.handleNoteKey("");
       });
     } else {
       //创建笔记
       let bookKey = this.props.currentBook.key;
-      let cfi = "";
-      if (this.props.currentBook.format === "PDF") {
-        cfi = JSON.stringify(
-          RecordLocation.getPDFLocation(
-            this.props.currentBook.md5.split("-")[0]
-          )
-        );
-      } else {
-        cfi = JSON.stringify(
-          RecordLocation.getHtmlLocation(this.props.currentBook.key)
-        );
-      }
 
       let pageArea = document.getElementById("page-area");
       if (!pageArea) return;
@@ -106,15 +115,7 @@ class PopupNote extends React.Component<PopupNoteProps, PopupNoteState> {
         this.props.currentBook.format === "PDF"
           ? JSON.stringify(getHightlightCoords())
           : JSON.stringify(charRange);
-      let text = doc.getSelection()?.toString();
-      if (!text) {
-        return;
-      }
-      text = text.replace(/\s\s/g, "");
-      text = text.replace(/\r/g, "");
-      text = text.replace(/\n/g, "");
-      text = text.replace(/\t/g, "");
-      text = text.replace(/\f/g, "");
+
       let percentage = 0;
 
       let color = this.props.color || 0;
@@ -123,8 +124,8 @@ class PopupNote extends React.Component<PopupNoteProps, PopupNoteState> {
       let note = new Note(
         bookKey,
         this.props.chapter,
-        this.props.chapterIndex,
-        text,
+        this.props.chapterDocIndex,
+        this.state.text,
         cfi,
         range,
         notes,
@@ -135,11 +136,16 @@ class PopupNote extends React.Component<PopupNoteProps, PopupNoteState> {
 
       let noteArr = this.props.notes;
       noteArr.push(note);
-      localforage.setItem("notes", noteArr).then(() => {
+      window.localforage.setItem("notes", noteArr).then(() => {
         this.props.handleOpenMenu(false);
-        toast.success(this.props.t("Add Successfully"));
+        toast.success(this.props.t("Addition successful"));
         this.props.handleFetchNotes();
-        this.props.handleMenuMode("highlight");
+        this.props.handleMenuMode("");
+        createOneNote(
+          note,
+          this.props.currentBook.format,
+          this.handleNoteClick
+        );
       });
     }
   }
@@ -155,26 +161,26 @@ class PopupNote extends React.Component<PopupNoteProps, PopupNoteState> {
       });
       if (noteIndex > -1) {
         this.props.notes.splice(noteIndex, 1);
-        localforage.setItem("notes", this.props.notes).then(() => {
-          this.props.handleOpenMenu(false);
-          this.props.handleMenuMode("menu");
+        window.localforage.setItem("notes", this.props.notes).then(() => {
           if (this.props.currentBook.format === "PDF") {
-            this.removePDFHighlight(
+            removePDFHighlight(
               JSON.parse(note.range),
               classes[note.color],
               note.key
             );
           }
 
-          toast.success(this.props.t("Delete Successfully"));
-          this.props.handleMenuMode("highlight");
+          toast.success(this.props.t("Deletion successful"));
+          this.props.handleMenuMode("");
           this.props.handleFetchNotes();
           this.props.handleNoteKey("");
+          removeOneNote(note.key, this.props.currentBook.format);
+          this.props.handleOpenMenu(false);
         });
       }
     } else {
       this.props.handleOpenMenu(false);
-      this.props.handleMenuMode("menu");
+      this.props.handleMenuMode("");
       this.props.handleNoteKey("");
     }
   };
@@ -192,12 +198,13 @@ class PopupNote extends React.Component<PopupNoteProps, PopupNoteState> {
     const renderNoteEditor = () => {
       return (
         <div className="note-editor">
+          <div className="note-original-text">{this.state.text}</div>
           <div className="editor-box-parent">
             <textarea className="editor-box" />
           </div>
           <div
             className="note-tags"
-            style={{ position: "absolute", bottom: "0px", height: "70px" }}
+            style={{ position: "absolute", bottom: "0px", height: "40px" }}
           >
             <NoteTag
               {...{

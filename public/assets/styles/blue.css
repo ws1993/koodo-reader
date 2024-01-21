@@ -4,7 +4,6 @@
 .delete-dialog-comfirm,
 .book-item-config,
 .book-cover-item-config,
-.side-menu-selector-container,
 .download-desk-button,
 .edit-dialog-comfirm,
 .change-location-button,
@@ -23,12 +22,7 @@
 }
 
 .header-search-box,
-input::-webkit-input-placeholder,
-input::-moz-placeholder,
-input::-ms-input-placeholder,
-textarea::-webkit-input-placeholder,
-textarea::-moz-placeholder,
-textarea::-ms-input-placeholder,
+.header-search-box::placeholder,
 .header-search-text,
 .card-list-item-show-more {
   color: rgba(1, 121, 202, 0.8) !important;
@@ -37,7 +31,6 @@ textarea::-ms-input-placeholder,
 .book-list-view {
   color: rgba(1, 121, 202, 1) !important;
 }
-.reading-progress-icon,
 .header-search-box,
 #jumpPage,
 #jumpChapter,
@@ -50,12 +43,6 @@ textarea::-ms-input-placeholder,
 .setting-close-container:hover,
 .side-menu-hover-container,
 .setting-dialog-location-title,
-.note-option:hover,
-.digest-option:hover,
-.translation-option:hover,
-.speaker-option:hover,
-.search-book-option:hover,
-.google-option:hover,
 .header-search-text:hover,
 .reader-setting-icon-container:hover,
 .setting-icon-container:hover,

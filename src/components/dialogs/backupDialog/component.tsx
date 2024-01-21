@@ -5,15 +5,21 @@ import { backup } from "../../../utils/syncUtils/backupUtil";
 import { restore } from "../../../utils/syncUtils/restoreUtil";
 import { Trans } from "react-i18next";
 import DropboxUtil from "../../../utils/syncUtils/dropbox";
+import OneDriveUtil from "../../../utils/syncUtils/onedrive";
+import GoogleDriveUtil from "../../../utils/syncUtils/googledrive";
 import WebdavUtil from "../../../utils/syncUtils/webdav";
+import FtpUtil from "../../../utils/syncUtils/ftp";
+import SFtpUtil from "../../../utils/syncUtils/sftp";
+import S3Util from "../../../utils/syncUtils/s3compatible";
 import { BackupDialogProps, BackupDialogState } from "./interface";
 import TokenDialog from "../tokenDialog";
 import StorageUtil from "../../../utils/serviceUtils/storageUtil";
 import Lottie from "react-lottie";
 import animationSuccess from "../../../assets/lotties/success.json";
-import FileSaver from "file-saver";
+
 import toast from "react-hot-toast";
 import { isElectron } from "react-device-detect";
+declare var window: any;
 const successOptions = {
   loop: false,
   autoplay: true,
@@ -31,7 +37,7 @@ class BackupDialog extends React.Component<
     this.state = {
       currentStep: 0,
       isBackup: "",
-      currentDrive: 0,
+      currentDrive: "local",
     };
   }
   handleClose = () => {
@@ -41,27 +47,30 @@ class BackupDialog extends React.Component<
   handleFinish = () => {
     this.setState({ currentStep: 2 });
     this.props.handleLoadingDialog(false);
-    this.showMessage("Excute Successfully");
+    this.showMessage("Execute successful");
     this.props.handleFetchBooks();
   };
   handleRestoreToLocal = async (event: any) => {
     event.preventDefault();
     this.props.handleLoadingDialog(true);
-    let result = await restore(event.target.files[0]);
-    if (result) {
-      this.handleFinish();
-    }
+    //Fix animation issue
+    setTimeout(async () => {
+      let result = await restore(event.target.files[0]);
+      if (result) {
+        this.handleFinish();
+      }
+    }, 10);
   };
   showMessage = (message: string) => {
     toast(this.props.t(message));
   };
-  handleDrive = (index: number) => {
+  handleDrive = (name: string) => {
     let year = new Date().getFullYear(),
       month = new Date().getMonth() + 1,
       day = new Date().getDate();
-    this.setState({ currentDrive: index }, async () => {
-      switch (index) {
-        case 0:
+    this.setState({ currentDrive: name }, async () => {
+      switch (name) {
+        case "local":
           let blob: Blob | boolean = await backup(
             this.props.books,
             this.props.notes,
@@ -71,7 +80,7 @@ class BackupDialog extends React.Component<
           if (!blob) {
             this.showMessage("Backup Failed");
           }
-          FileSaver.saveAs(
+          window.saveAs(
             blob as Blob,
             `${year}-${month <= 9 ? "0" + month : month}-${
               day <= 9 ? "0" + day : day
@@ -79,12 +88,31 @@ class BackupDialog extends React.Component<
           );
           this.handleFinish();
           break;
-        case 1:
-          if (!StorageUtil.getReaderConfig("dropbox_token")) {
+        case "dropbox":
+        case "webdav":
+        case "onedrive":
+        case "googledrive":
+        case "ftp":
+        case "sftp":
+        case "s3compatible":
+          if (!StorageUtil.getReaderConfig(name + "_token")) {
             this.props.handleTokenDialog(true);
             break;
           }
-
+          let DriveUtil =
+            name === "dropbox"
+              ? DropboxUtil
+              : name === "ftp"
+              ? FtpUtil
+              : name === "onedrive"
+              ? OneDriveUtil
+              : name === "googledrive"
+              ? GoogleDriveUtil
+              : name === "sftp"
+              ? SFtpUtil
+              : name === "s3compatible"
+              ? S3Util
+              : WebdavUtil;
           if (this.state.isBackup === "yes") {
             this.showMessage("Uploading, please wait");
             this.props.handleLoadingDialog(true);
@@ -99,7 +127,8 @@ class BackupDialog extends React.Component<
               this.showMessage("Backup Failed");
               this.props.handleLoadingDialog(false);
             }
-            let result = await DropboxUtil.UploadFile(blob);
+
+            let result = await DriveUtil.UploadFile(blob);
             if (result) {
               this.handleFinish();
             } else {
@@ -108,7 +137,7 @@ class BackupDialog extends React.Component<
           } else {
             this.props.handleLoadingDialog(true);
             this.showMessage("Downloading, please wait");
-            let result = await DropboxUtil.DownloadFile();
+            let result = await DriveUtil.DownloadFile();
             if (result) {
               this.handleFinish();
             } else {
@@ -117,54 +146,6 @@ class BackupDialog extends React.Component<
             }
           }
 
-          break;
-        case 2:
-          this.showMessage("Coming Soon");
-          break;
-
-        case 3:
-          if (!StorageUtil.getReaderConfig("webdav_token")) {
-            this.props.handleTokenDialog(true);
-            break;
-          }
-          if (this.state.isBackup === "yes") {
-            this.showMessage("Uploading, please wait");
-            this.props.handleLoadingDialog(true);
-
-            let blob: any = await backup(
-              this.props.books,
-              this.props.notes,
-              this.props.bookmarks,
-              false
-            );
-            if (!blob) {
-              this.showMessage("Backup Failed");
-              this.props.handleLoadingDialog(false);
-            }
-
-            let result = await WebdavUtil.UploadFile(
-              new File([blob], "data.zip", {
-                lastModified: new Date().getTime(),
-                type: blob.type,
-              })
-            );
-            if (result) {
-              this.handleFinish();
-            } else {
-              this.showMessage("Upload failed, check your connection");
-              this.props.handleLoadingDialog(false);
-            }
-          } else {
-            this.showMessage("Downloading, please wait");
-            this.props.handleLoadingDialog(true);
-
-            let result = await WebdavUtil.DownloadFile();
-            if (!result) {
-              this.showMessage("Download failed,network problem or no backup");
-            } else {
-              this.handleFinish();
-            }
-          }
           break;
         default:
           break;
@@ -173,14 +154,20 @@ class BackupDialog extends React.Component<
   };
   render() {
     const renderDrivePage = () => {
-      return driveList.map((item, index) => {
+      return driveList.map((item) => {
         return (
           <li
             key={item.id}
             className="backup-page-list-item"
             onClick={() => {
               //webdav is avavilible on desktop
-              if (index === 3 && !isElectron) {
+              if (
+                (item.icon === "webdav" ||
+                  item.icon === "ftp" ||
+                  item.icon === "s3compatible" ||
+                  item.icon === "sftp") &&
+                !isElectron
+              ) {
                 toast(
                   this.props.t(
                     "Koodo Reader's web version are limited by the browser, for more powerful features, please download the desktop version."
@@ -188,31 +175,19 @@ class BackupDialog extends React.Component<
                 );
                 return;
               }
-              this.handleDrive(index);
+              this.handleDrive(item.icon);
             }}
-            style={index !== 2 ? { opacity: 1 } : {}}
           >
             <div className="backup-page-list-item-container">
               <span
                 className={`icon-${item.icon} backup-page-list-icon`}
               ></span>
-              {StorageUtil.getReaderConfig("dropbox_token") && index === 1 ? (
+              {StorageUtil.getReaderConfig(item.icon + "_token") ? (
                 <div
                   className="backup-page-list-title"
                   onClick={() => {
-                    StorageUtil.setReaderConfig("dropbox_token", "");
-                    this.showMessage("Unauthorize Successfully");
-                  }}
-                  style={{ color: "rgb(0, 120, 212)" }}
-                >
-                  <Trans>Unauthorize</Trans>
-                </div>
-              ) : StorageUtil.getReaderConfig("webdav_token") && index === 3 ? (
-                <div
-                  className="backup-page-list-title"
-                  onClick={() => {
-                    StorageUtil.setReaderConfig("webdav_token", "");
-                    this.showMessage("Unauthorize Successfully");
+                    StorageUtil.setReaderConfig(item.icon + "_token", "");
+                    this.showMessage("Unauthorize successful");
                   }}
                   style={{ color: "rgb(0, 120, 212)" }}
                 >
@@ -230,13 +205,33 @@ class BackupDialog extends React.Component<
     };
 
     const dialogProps = {
-      driveName: driveList[this.state.currentDrive!].icon,
-      url: driveList[this.state.currentDrive!].url,
+      driveName: this.state.currentDrive,
+      url: driveList[
+        window._.findLastIndex(driveList, {
+          icon: this.state.currentDrive,
+        })
+      ].url,
+      title:
+        driveList[
+          window._.findLastIndex(driveList, {
+            icon: this.state.currentDrive,
+          })
+        ].name,
     };
 
     return (
       <div className="backup-page-container">
+        {this.state.currentStep === 0 && this.state.isBackup === "no" && (
+          <div className="restore-warning">
+            <Trans>
+              This process is inreversible, and will completely overwrite your
+              current library, make sure you know what you're doing before
+              proceeding
+            </Trans>
+          </div>
+        )}
         {this.props.isOpenTokenDialog ? <TokenDialog {...dialogProps} /> : null}
+
         {this.state.currentStep === 0 ? (
           <div className="backup-page-title">
             <Trans>Choose your operation</Trans>
@@ -263,7 +258,7 @@ class BackupDialog extends React.Component<
               }}
             >
               <span className="icon-backup"></span>
-              <div style={{ lineHeight: 1.25 }}>
+              <div style={{ lineHeight: 1.0 }}>
                 <Trans>Backup</Trans>
               </div>
             </div>
@@ -288,7 +283,7 @@ class BackupDialog extends React.Component<
               }}
             >
               <span className="icon-restore"></span>
-              <div>
+              <div style={{ lineHeight: 1.0 }}>
                 <Trans>Restore</Trans>
               </div>
             </div>
@@ -317,8 +312,8 @@ class BackupDialog extends React.Component<
               <div className="backup-page-finish-text">
                 <Trans>
                   {this.state.isBackup === "yes"
-                    ? "Backup Successfully"
-                    : "Restore Successfully"}
+                    ? "Backup successful"
+                    : "Restore successful"}
                 </Trans>
               </div>
               {this.state.isBackup ? null : (
@@ -354,7 +349,7 @@ class BackupDialog extends React.Component<
               this.setState({ currentStep: 0 });
             }}
           >
-            <Trans>Last Step</Trans>
+            <Trans>Last step</Trans>
           </div>
         ) : this.state.currentStep === 0 ? (
           <div
@@ -364,7 +359,7 @@ class BackupDialog extends React.Component<
             }}
             style={this.state.isBackup ? {} : { display: "none" }}
           >
-            <Trans>Next Step</Trans>
+            <Trans>Next step</Trans>
           </div>
         ) : null}
       </div>

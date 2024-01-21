@@ -9,11 +9,10 @@ import { ReaderProps, ReaderState } from "./interface";
 import StorageUtil from "../../utils/serviceUtils/storageUtil";
 import ReadingTime from "../../utils/readUtils/readingTime";
 import Viewer from "../../containers/htmlViewer";
-import _ from "underscore";
-import localforage from "localforage";
+
 import RecordLocation from "../../utils/readUtils/recordLocation";
 import "./index.css";
-
+declare var window: any;
 class Reader extends React.Component<ReaderProps, ReaderState> {
   messageTimer!: NodeJS.Timeout;
   tickTimer!: NodeJS.Timeout;
@@ -27,14 +26,10 @@ class Reader extends React.Component<ReaderProps, ReaderState> {
       hoverPanel: "",
       isOpenLeftPanel:
         StorageUtil.getReaderConfig("isNavLocked") === "yes" ? true : false,
-
-      scale: StorageUtil.getReaderConfig("scale") || 1,
-      margin: parseInt(StorageUtil.getReaderConfig("margin")) || 30,
       time: 0,
       isTouch: StorageUtil.getReaderConfig("isTouch") === "yes",
       isPreventTrigger:
         StorageUtil.getReaderConfig("isPreventTrigger") === "yes",
-      readerMode: StorageUtil.getReaderConfig("readerMode") || "double",
     };
   }
   componentDidMount() {
@@ -53,17 +48,19 @@ class Reader extends React.Component<ReaderProps, ReaderState> {
     }, 1000);
   }
   UNSAFE_componentWillMount() {
-    let url = document.location.href.split("/");
-    let key = url[url.length - 1].split("?")[0];
+    let url = document.location.href;
+    let firstIndexOfQuestion = url.indexOf("?");
+    let lastIndexOfSlash = url.lastIndexOf("/", firstIndexOfQuestion);
+    let key = url.substring(lastIndexOfSlash + 1, firstIndexOfQuestion);
     this.props.handleFetchBooks();
-    localforage.getItem("books").then((result: any) => {
+    window.localforage.getItem("books").then((result: any) => {
       let book;
       //兼容在主窗口打开
       if (this.props.currentBook.key) {
         book = this.props.currentBook;
       } else {
         book =
-          result[_.findIndex(result, { key })] ||
+          result[window._.findIndex(result, { key })] ||
           JSON.parse(localStorage.getItem("tempBook") || "{}");
       }
       this.props.handleReadingBook(book);
@@ -127,16 +124,19 @@ class Reader extends React.Component<ReaderProps, ReaderState> {
         break;
     }
   };
-  handleLocation = async () => {
-    let position = await this.props.htmlBook.rendition.getPosition();
+  handleLocation = () => {
+    let position = this.props.htmlBook.rendition.getPosition();
 
     RecordLocation.recordHtmlLocation(
       this.props.currentBook.key,
       position.text,
       position.chapterTitle,
+      position.chapterDocIndex,
+      position.chapterHref,
       position.count,
       position.percentage,
-      position.cfi
+      position.cfi,
+      position.page
     );
   };
   render() {
@@ -156,8 +156,8 @@ class Reader extends React.Component<ReaderProps, ReaderState> {
             <div
               className="previous-chapter-single-container"
               onClick={async () => {
-                this.props.htmlBook.rendition.prev();
-                await this.handleLocation();
+                await this.props.htmlBook.rendition.prev();
+                this.handleLocation();
               }}
             >
               <span className="icon-dropdown previous-chapter-single"></span>
@@ -165,8 +165,8 @@ class Reader extends React.Component<ReaderProps, ReaderState> {
             <div
               className="next-chapter-single-container"
               onClick={async () => {
-                this.props.htmlBook.rendition.next();
-                await this.handleLocation();
+                await this.props.htmlBook.rendition.next();
+                this.handleLocation();
               }}
             >
               <span className="icon-dropdown next-chapter-single"></span>

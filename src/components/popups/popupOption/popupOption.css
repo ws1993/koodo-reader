@@ -11,7 +11,9 @@
 .translation-option,
 .speaker-option,
 .search-book-option,
-.google-option,
+.browser-option,
+.dict-option,
+.wikipedia-option,
 .copy-option {
   height: 42px;
   width: 42px;
@@ -35,7 +37,9 @@
 .translation-option:hover,
 .speaker-option:hover,
 .search-book-option:hover,
-.google-option:hover,
+.browser-option:hover,
+.dict-option:hover,
+.wikipedia-option:hover,
 .copy-option:hover {
   border-radius: 5px;
 }
@@ -44,10 +48,12 @@
 .translation-icon,
 .speaker-icon,
 .search-book-icon,
-.google-icon,
+.browser-icon,
+.dict-icon,
 .baidu-icon,
 .bing-icon,
 .copy-icon,
+.wikipedia-icon,
 .digest-icon {
   line-height: 45px !important;
   font-size: 27px;
@@ -62,16 +68,24 @@
   color: #109870;
 }
 .speaker-icon {
-  color: #0063b1;
+  color: #b266cb;
   font-size: 30px;
-  margin-left: 2px;
+  margin-left: 5px;
 }
 .search-book-icon {
   color: #6867d1;
 }
-.google-icon {
-  color: #00b6c2;
+.browser-icon {
+  color: #01b7bc;
+  font-size: 27px;
+}
+.dict-icon {
+  color: #2084e8;
   font-size: 25px;
+}
+.wikipedia-icon {
+  font-size: 22px;
+  opacity: 0.83;
 }
 .baidu-icon {
   color: rgb(252, 204, 136);

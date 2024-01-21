@@ -1,11 +1,11 @@
 import React from "react";
 import "./popupOption.css";
-import localforage from "localforage";
+
 import Note from "../../../model/Note";
 import { PopupOptionProps } from "./interface";
 import ColorOption from "../../colorOption";
 import RecordLocation from "../../../utils/readUtils/recordLocation";
-import { Tooltip } from "react-tippy";
+
 import { popupList } from "../../../constants/popupList";
 import StorageUtil from "../../../utils/serviceUtils/storageUtil";
 import toast from "react-hot-toast";
@@ -15,31 +15,14 @@ import { getHightlightCoords } from "../../../utils/fileUtils/pdfUtil";
 import { getIframeDoc } from "../../../utils/serviceUtils/docUtil";
 import { openExternalUrl } from "../../../utils/serviceUtils/urlUtil";
 import { isElectron } from "react-device-detect";
+import { createOneNote } from "../../../utils/serviceUtils/noteUtil";
 
 declare var window: any;
 
 class PopupOption extends React.Component<PopupOptionProps> {
   handleNote = () => {
-    this.props.handleChangeDirection(false);
+    // this.props.handleChangeDirection(false);
     this.props.handleMenuMode("note");
-    this.handleEdge();
-  };
-  handleEdge = () => {
-    let page: any = { offsetLeft: 0 };
-    if (this.props.currentBook.format !== "PDF") {
-      page = document.getElementById("page-area");
-      if (!page.clientWidth) return;
-    }
-    let popupMenu: any = document.querySelector(".popup-menu-container");
-    let posX = popupMenu?.style.left;
-    let posY = popupMenu?.style.top;
-    posX = parseInt(posX.substr(0, posX.length - 2));
-    posY = parseInt(posY.substr(0, posY.length - 2));
-    let rightEdge = this.props.pageWidth - 310 + page.offsetLeft * 2;
-
-    if (posX > rightEdge) {
-      popupMenu?.setAttribute("style", `left:${rightEdge}px;top:${posY}px`);
-    }
   };
   handleCopy = () => {
     let text = getSelection();
@@ -49,7 +32,7 @@ class PopupOption extends React.Component<PopupOptionProps> {
     let doc = getIframeDoc();
     if (!doc) return;
     doc.getSelection()?.empty();
-    toast.success(this.props.t("Copy Successfully"));
+    toast.success(this.props.t("Copying successful"));
   };
   handleTrans = () => {
     if (!isElectron) {
@@ -62,7 +45,18 @@ class PopupOption extends React.Component<PopupOptionProps> {
     }
     this.props.handleMenuMode("trans");
     this.props.handleOriginalText(getSelection() || "");
-    this.handleEdge();
+  };
+  handleDict = () => {
+    if (!isElectron) {
+      toast(
+        this.props.t(
+          "Koodo Reader's web version are limited by the browser, for more powerful features, please download the desktop version."
+        )
+      );
+      return;
+    }
+    this.props.handleMenuMode("dict");
+    this.props.handleOriginalText(getSelection() || "");
   };
   handleDigest = () => {
     let bookKey = this.props.currentBook.key;
@@ -86,7 +80,7 @@ class PopupOption extends React.Component<PopupOptionProps> {
     if (!pageArea) return;
     let iframe = pageArea.getElementsByTagName("iframe")[0];
     if (!iframe) return;
-    let doc = iframe.contentDocument;
+    let doc = getIframeDoc();
     if (!doc) return;
     let charRange;
     if (this.props.currentBook.format !== "PDF") {
@@ -108,7 +102,7 @@ class PopupOption extends React.Component<PopupOptionProps> {
     let digest = new Note(
       bookKey,
       this.props.chapter,
-      this.props.chapterIndex,
+      this.props.chapterDocIndex,
       text,
       cfi,
       range,
@@ -119,12 +113,23 @@ class PopupOption extends React.Component<PopupOptionProps> {
     );
     let noteArr = this.props.notes;
     noteArr.push(digest);
-    localforage.setItem("notes", noteArr).then(() => {
+    window.localforage.setItem("notes", noteArr).then(() => {
       this.props.handleOpenMenu(false);
-      toast.success(this.props.t("Add Successfully"));
+      toast.success(this.props.t("Addition successful"));
       this.props.handleFetchNotes();
-      this.props.handleMenuMode("highlight");
+      this.props.handleMenuMode("");
+      createOneNote(
+        digest,
+        this.props.currentBook.format,
+        this.handleNoteClick
+      );
     });
+  };
+
+  handleNoteClick = (event: Event) => {
+    this.props.handleNoteKey((event.target as any).dataset.key);
+    this.props.handleMenuMode("note");
+    this.props.handleOpenMenu(true);
   };
   handleJump = (url: string) => {
     openExternalUrl(url);
@@ -232,26 +237,22 @@ class PopupOption extends React.Component<PopupOptionProps> {
                         this.handleSearchBook();
                         break;
                       case 5:
-                        this.handleSearchInternet();
+                        this.handleDict();
                         break;
                       case 6:
+                        this.handleSearchInternet();
+                        break;
+                      case 7:
                         this.handleSpeak();
                         break;
-
                       default:
                         break;
                     }
                   }}
                 >
-                  <Tooltip
-                    title={this.props.t(item.title)}
-                    position="top"
-                    trigger="mouseenter"
-                  >
-                    <span
-                      className={`icon-${item.icon} ${item.name}-icon`}
-                    ></span>
-                  </Tooltip>
+                  <span
+                    className={`icon-${item.icon} ${item.name}-icon`}
+                  ></span>
                 </div>
               );
             })}

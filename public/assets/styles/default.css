@@ -1,5 +1,4 @@
-body,
-.editor-box {
+body {
   -webkit-tap-highlight-color: transparent;
   background: rgba(255, 255, 255, 1);
   color: rgba(75, 75, 75, 1);
@@ -8,18 +7,18 @@ body,
 .book-content-name,
 .delete-tag-container,
 .setting-subtitle,
+.book-more-action,
+.reading-progress-icon,
 .book-subcontent-name {
   color: rgba(75, 75, 75, 1);
 }
-.reading-progress-icon,
 .book-love-icon,
 .book-loved-icon,
 .zoom-in-icon,
 .zoom-out-icon,
 .save-icon,
 .clockwise-icon,
-.counterclockwise-icon,
-.book-more-action {
+.counterclockwise-icon {
   text-shadow: 0px 0px 5px rgba(75, 75, 75, 0.3);
 }
 .add-dialog-shelf-list-box,
@@ -38,6 +37,7 @@ body,
 .import-from-cloud,
 .booklist-shelf-list,
 .token-dialog-token-box,
+.feedback-dialog-content-box,
 .token-dialog-url-box,
 .token-dialog-username-box,
 .token-dialog-password-box,
@@ -50,8 +50,6 @@ body,
 .delete-dialog-uncheck-icon,
 .previous-chapter,
 .color-option,
-.original-text-box,
-.trans-text-box,
 .line-option,
 .token-dialog-link-text,
 .token-dialog-token-text,
@@ -59,12 +57,7 @@ body,
   border: 2px solid rgba(75, 75, 75, 1);
 }
 .header-search-box,
-input::-webkit-input-placeholder,
-input::-moz-placeholder,
-input::-ms-input-placeholder,
-textarea::-webkit-input-placeholder,
-textarea::-moz-placeholder,
-textarea::-ms-input-placeholder,
+.header-search-box::placeholder,
 .header-search-text,
 .card-list-item-show-more,
 .token-dialog-link-text,
@@ -81,7 +74,6 @@ textarea::-ms-input-placeholder,
 .delete-dialog-comfirm,
 .book-item-config,
 .book-cover-item-config,
-.side-menu-selector-container,
 .download-desk-button,
 .edit-dialog-comfirm,
 .change-location-button,
@@ -105,7 +97,6 @@ textarea::-ms-input-placeholder,
   color: rgba(255, 255, 255, 1) !important;
 }
 
-.reading-progress-icon,
 .header-search-box,
 #jumpPage,
 #jumpChapter,
@@ -124,7 +115,9 @@ textarea::-ms-input-placeholder,
 .speaker-option:hover,
 .backup-page-backup:hover,
 .search-book-option:hover,
-.google-option:hover,
+.dict-option:hover,
+.wikipedia-option:hover,
+.browser-option:hover,
 .header-search-text:hover,
 .reader-setting-icon-container:hover,
 .setting-icon-container:hover,
@@ -137,26 +130,30 @@ textarea::-ms-input-placeholder,
 .action-dialog-edit:hover,
 .backup-page-next:hover,
 .backup-page-list-item:hover,
+.restore-file:hover,
 .book-manage-title:hover,
 .copy-option:hover {
   background-color: rgba(75, 75, 75, 0.035);
 }
 .drag-background {
-  background: hsla(0, 0%, 100%, 0.5);
+  background: hsla(0, 0%, 0%, 0.3);
 }
 
 .action-dialog-container,
 .add-dialog-container,
+.select-more-actions,
 .backup-page-container,
 .delete-dialog-container,
 .download-desk-container,
 .edit-dialog-container,
 .loading-dialog,
 .setting-dialog-container,
+.feedback-dialog-container,
 .token-dialog-container,
 .new-version,
 .sort-dialog-container,
 .popup-menu-box,
+.popup-box-container,
 .loading-page-cover,
 .loading-page-cover,
 .navigation-panel,
@@ -166,10 +163,12 @@ textarea::-ms-input-placeholder,
   background: rgba(255, 255, 255, 1);
   box-shadow: 0px 0px 7px rgba(0, 0, 0, 0.2);
 }
+.book-item-image,
 .book-item-cover,
 .book-cover,
-.book-cover-item-cover,
-.book-item-list-cover {
+.detail-cover,
+.detail-cover-background-container,
+.book-cover-item-cover {
   background: rgba(255, 255, 255, 1);
   box-shadow: 0px 0px 5px rgba(0, 0, 0, 0.18);
 }
@@ -208,6 +207,7 @@ textarea::-ms-input-placeholder,
 .token-dialog-cancel,
 .new-version,
 .popup-menu-box,
+.popup-box-container,
 .general-setting-dropdown,
 .card-list-item-card,
 .navigation-header,
@@ -221,9 +221,7 @@ textarea::-ms-input-placeholder,
 .exit-reading-text,
 .add-bookmark-text,
 .enter-fullscreen-text,
-.reading-progress-icon,
 .book-love-icon,
-.book-more-action,
 .image-operation,
 .popup-menu-triangle-up,
 .popup-menu-triangle-down,

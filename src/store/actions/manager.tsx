@@ -1,10 +1,9 @@
-import localforage from "localforage";
 import StorageUtil from "../../utils/serviceUtils/storageUtil";
 import SortUtil from "../../utils/readUtils/sortUtil";
 import BookModel from "../../model/Book";
 import { Dispatch } from "redux";
 import AddTrash from "../../utils/readUtils/addTrash";
-
+declare var window: any;
 export function handleBooks(books: BookModel[]) {
   return { type: "HANDLE_BOOKS", payload: books };
 }
@@ -19,6 +18,9 @@ export function handleSearch(isSearch: boolean) {
 }
 export function handleTipDialog(isTipDialog: boolean) {
   return { type: "HANDLE_TIP_DIALOG", payload: isTipDialog };
+}
+export function handleDetailDialog(isDetailDialog: boolean) {
+  return { type: "HANDLE_DETAIL_DIALOG", payload: isDetailDialog };
 }
 export function handleTip(tip: string) {
   return { type: "HANDLE_TIP", payload: tip };
@@ -57,6 +59,9 @@ export function handleBookSort(isBookSort: boolean) {
 export function handleNoteSort(isNoteSort: boolean) {
   return { type: "HANDLE_NOTE_SORT", payload: isNoteSort };
 }
+export function handleFeedbackDialog(mode: boolean) {
+  return { type: "HANDLE_FEEDBACK_DIALOG", payload: mode };
+}
 export function handleBookSortCode(bookSortCode: {
   sort: number;
   order: number;
@@ -71,16 +76,13 @@ export function handleNoteSortCode(noteSortCode: {
   return { type: "HANDLE_NOTE_SORT_CODE", payload: noteSortCode };
 }
 
-export function handleFetchBooks(isTrash = false) {
+export function handleFetchBooks() {
   return (dispatch: Dispatch) => {
-    localforage.getItem("books", (err, value) => {
+    window.localforage.getItem("books", (err, value) => {
       let bookArr: any = value;
       let keyArr = AddTrash.getAllTrash();
-      if (isTrash) {
-        dispatch(handleDeletedBooks(handleKeyFilter(bookArr, keyArr)));
-      } else {
-        dispatch(handleBooks(handleKeyRemove(bookArr, keyArr)));
-      }
+      dispatch(handleDeletedBooks(handleKeyFilter(bookArr, keyArr)));
+      dispatch(handleBooks(handleKeyRemove(bookArr, keyArr)));
     });
   };
 }

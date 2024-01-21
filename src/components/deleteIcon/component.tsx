@@ -1,10 +1,10 @@
 import React from "react";
 import "./deleteIcon.css";
 import { DeleteIconProps, DeleteIconStates } from "./interface";
-import localforage from "localforage";
 import TagUtil from "../../utils/readUtils/tagUtil";
 import DeletePopup from "../dialogs/deletePopup";
 import toast from "react-hot-toast";
+declare var window: any;
 class DeleteIcon extends React.Component<DeleteIconProps, DeleteIconStates> {
   constructor(props: DeleteIconProps) {
     super(props);
@@ -28,32 +28,44 @@ class DeleteIcon extends React.Component<DeleteIconProps, DeleteIconStates> {
     deleteItems.forEach((item: any, index: number) => {
       if (this.props.mode === "tags") {
         item === this.props.tagName && TagUtil.clear(item);
+        this.handleDeleteTagFromNote(item);
         return;
       }
       if (item.key === this.props.itemKey) {
         deleteItems.splice(index, 1);
         if (deleteItems.length === 0) {
-          localforage
+          window.localforage
             .removeItem(this.props.mode)
             .then(() => {
               deleteFunc();
-              toast.success(this.props.t("Delete Successfully"));
+              toast.success(this.props.t("Deletion successful"));
             })
             .catch(() => {
               console.log("删除失败");
             });
         } else {
-          localforage
+          window.localforage
             .setItem(this.props.mode, deleteItems)
             .then(() => {
               deleteFunc();
-              toast.success(this.props.t("Delete Successfully"));
+              toast.success(this.props.t("Deletion successful"));
             })
             .catch(() => {
               console.log("修改失败");
             });
         }
       }
+    });
+  };
+  handleDeleteTagFromNote = (tagName: string) => {
+    let noteList = this.props.notes.map((item) => {
+      return {
+        ...item,
+        tag: item.tag.filter((subitem) => subitem !== tagName),
+      };
+    });
+    window.localforage.setItem("notes", noteList).then(() => {
+      this.props.handleFetchNotes();
     });
   };
   handleDeletePopup = (isOpenDelete: boolean) => {

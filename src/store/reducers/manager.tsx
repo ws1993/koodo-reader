@@ -3,6 +3,7 @@ const initState = {
   deletedBooks: [],
   searchResults: [],
   isSearch: false,
+  isOpenFeedbackDialog: false,
   isAboutOpen: false,
   isBookSort: localStorage.getItem("bookSortCode") ? true : false,
   isNoteSort: false,
@@ -12,11 +13,12 @@ const initState = {
   isShowLoading: false,
   isNewWarning: false,
   isTipDialog: false,
+  isDetailDialog: false,
   isShowNew: false,
   bookSortCode: { sort: 1, order: 2 },
   noteSortCode: { sort: 2, order: 2 },
   isSelectBook: false,
-  message: "Add Successfully",
+  message: "Addition successful",
   tip: "",
   selectedBooks: [],
 };
@@ -35,6 +37,12 @@ export function manager(
         ...state,
         deletedBooks: action.payload,
       };
+    case "HANDLE_FEEDBACK_DIALOG":
+      return {
+        ...state,
+        isOpenFeedbackDialog: action.payload,
+      };
+
     case "HANDLE_SEARCH_BOOKS":
       return {
         ...state,
@@ -54,6 +62,11 @@ export function manager(
       return {
         ...state,
         isTipDialog: action.payload,
+      };
+    case "HANDLE_DETAIL_DIALOG":
+      return {
+        ...state,
+        isDetailDialog: action.payload,
       };
     case "HANDLE_TIP":
       return {

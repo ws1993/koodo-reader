@@ -10,7 +10,6 @@ import RecordLocation from "../../utils/readUtils/recordLocation";
 import { isElectron } from "react-device-detect";
 import EmptyCover from "../emptyCover";
 import BookUtil from "../../utils/fileUtils/bookUtil";
-import toast from "react-hot-toast";
 
 declare var window: any;
 
@@ -18,12 +17,12 @@ class BookCardItem extends React.Component<BookCardProps, BookCardState> {
   constructor(props: BookCardProps) {
     super(props);
     this.state = {
-      isOpenConfig: false,
       isFavorite:
         AddFavorite.getAllFavorite().indexOf(this.props.book.key) > -1,
       left: 0,
       top: 0,
       direction: "horizontal",
+      isHover: false,
     };
   }
 
@@ -42,11 +41,16 @@ class BookCardItem extends React.Component<BookCardProps, BookCardState> {
       !filePath
     ) {
       this.props.handleReadingBook(this.props.book);
-      if (StorageUtil.getReaderConfig("isOpenInMain") === "yes") {
-        this.props.history.push(BookUtil.getBookUrl(this.props.book));
-      } else {
-        BookUtil.RedirectBook(this.props.book);
-      }
+
+      BookUtil.RedirectBook(this.props.book, this.props.t, this.props.history);
+    }
+  }
+  UNSAFE_componentWillReceiveProps(nextProps: BookCardProps) {
+    if (nextProps.book.key !== this.props.book.key) {
+      this.setState({
+        isFavorite:
+          AddFavorite.getAllFavorite().indexOf(nextProps.book.key) > -1,
+      });
     }
   }
 
@@ -61,9 +65,9 @@ class BookCardItem extends React.Component<BookCardProps, BookCardState> {
       {
         left: x,
         top:
-          document.body.clientHeight - e.clientY > 300
+          document.body.clientHeight - e.clientY > 250
             ? e.clientY
-            : e.clientY - 300,
+            : e.clientY - 200,
       },
       () => {
         this.props.handleActionDialog(true);
@@ -76,24 +80,7 @@ class BookCardItem extends React.Component<BookCardProps, BookCardState> {
     this.props.handleDeleteDialog(true);
     this.props.handleActionDialog(false);
   };
-  handleLoveBook = () => {
-    AddFavorite.setFavorite(this.props.book.key);
-    this.setState({ isFavorite: true });
-    toast.success(this.props.t("Add Successfully"));
-  };
-  handleCancelLoveBook = () => {
-    AddFavorite.clear(this.props.book.key);
-    this.setState({ isFavorite: false });
-    if (Object.keys(AddFavorite.getAllFavorite()).length === 0) {
-      this.props.history.push("/manager/empty");
-      document.title = "Koodo Reader";
-    }
-    toast.success(this.props.t("Cancel Successfully"));
-  };
-  //控制按钮的弹出
-  handleConfig = (mode: boolean) => {
-    this.setState({ isOpenConfig: mode });
-  };
+
   handleJump = () => {
     if (this.props.isSelectBook) {
       this.props.handleSelectedBooks(
@@ -107,64 +94,89 @@ class BookCardItem extends React.Component<BookCardProps, BookCardState> {
     }
     RecentBooks.setRecent(this.props.book.key);
     this.props.handleReadingBook(this.props.book);
-    if (StorageUtil.getReaderConfig("isOpenInMain") === "yes") {
-      this.props.history.push(BookUtil.getBookUrl(this.props.book));
-    } else {
-      BookUtil.RedirectBook(this.props.book);
-    }
+    BookUtil.RedirectBook(this.props.book, this.props.t, this.props.history);
   };
   render() {
-    let percentage = RecordLocation.getHtmlLocation(this.props.book.key)
-      ? RecordLocation.getHtmlLocation(this.props.book.key).percentage
-      : 0;
+    let percentage = "0";
+    if (this.props.book.format === "PDF") {
+      if (
+        RecordLocation.getPDFLocation(this.props.book.md5.split("-")[0]) &&
+        RecordLocation.getPDFLocation(this.props.book.md5.split("-")[0]).page &&
+        this.props.book.page
+      ) {
+        percentage =
+          RecordLocation.getPDFLocation(this.props.book.md5.split("-")[0])
+            .page /
+            this.props.book.page +
+          "";
+      }
+    } else {
+      if (
+        RecordLocation.getHtmlLocation(this.props.book.key) &&
+        RecordLocation.getHtmlLocation(this.props.book.key).percentage
+      ) {
+        percentage = RecordLocation.getHtmlLocation(
+          this.props.book.key
+        ).percentage;
+      }
+    }
+    // let percentage = 0;
     const actionProps = { left: this.state.left, top: this.state.top };
-
     return (
       <>
         <div
           className="book-list-item"
-          onMouseOver={() => {
-            this.handleConfig(true);
-          }}
-          onMouseLeave={() => {
-            this.handleConfig(false);
-            this.props.handleActionDialog(false);
-          }}
           onContextMenu={(event) => {
             this.handleMoreAction(event);
           }}
         >
-          {!this.props.book.cover ||
-          this.props.book.cover === "noCover" ||
-          (this.props.book.format === "PDF" &&
-            StorageUtil.getReaderConfig("isPDFCover") !== "yes") ? (
-            <div
-              className="book-item-cover"
-              onClick={() => {
-                this.handleJump();
-              }}
-              style={{ display: "block" }}
-            >
-              <EmptyCover
-                {...{
-                  format: this.props.book.format,
-                  title: this.props.book.name,
-                  scale: 1,
-                }}
-              />
-            </div>
-          ) : (
-            <div
-              className="book-item-cover"
-              onClick={() => {
-                this.handleJump();
-              }}
-            >
+          <div
+            className="book-item-cover"
+            onClick={() => {
+              this.handleJump();
+            }}
+            onMouseEnter={() => {
+              this.setState({ isHover: true });
+            }}
+            onMouseLeave={() => {
+              this.setState({ isHover: false });
+            }}
+            style={
+              StorageUtil.getReaderConfig("isDisableCrop") === "yes"
+                ? {
+                    height: "168px",
+                    alignItems: "flex-end",
+                    background: "rgba(255, 255,255, 0)",
+                    boxShadow: "0px 0px 5px rgba(0, 0, 0, 0)",
+                  }
+                : {
+                    height: "137px",
+                    alignItems: "center",
+                    overflow: "hidden",
+                  }
+            }
+          >
+            {!this.props.book.cover ||
+            this.props.book.cover === "noCover" ||
+            (this.props.book.format === "PDF" &&
+              StorageUtil.getReaderConfig("isDisablePDFCover") === "yes") ? (
+              <div className="book-item-image">
+                <EmptyCover
+                  {...{
+                    format: this.props.book.format,
+                    title: this.props.book.name,
+                    scale: 1,
+                  }}
+                />
+              </div>
+            ) : (
               <img
-                src={this.props.book.cover}
+                data-src={this.props.book.cover}
                 alt=""
+                className="lazy-image book-item-image"
                 style={
-                  this.state.direction === "horizontal"
+                  this.state.direction === "horizontal" ||
+                  StorageUtil.getReaderConfig("isDisableCrop") === "yes"
                     ? { width: "100%" }
                     : { height: "100%" }
                 }
@@ -178,57 +190,65 @@ class BookCardItem extends React.Component<BookCardProps, BookCardState> {
                     this.setState({ direction: "vertical" });
                   }
                 }}
-              />
-            </div>
-          )}
-
-          <p className="book-item-title">{this.props.book.name}</p>
-
-          {this.state.isFavorite && !this.props.isSelectBook ? (
-            <span
-              className="icon-love book-loved-icon"
-              onClick={() => {
-                this.handleCancelLoveBook();
-              }}
-            ></span>
-          ) : null}
-          {this.props.isSelectBook ? (
+              ></img>
+            )}
+          </div>
+          {this.props.isSelectBook || this.state.isHover ? (
             <span
               className="icon-message book-selected-icon"
-              style={this.props.isSelected ? {} : { color: "#eee" }}
+              onMouseEnter={() => {
+                this.setState({ isHover: true });
+              }}
+              onClick={(event) => {
+                if (this.props.isSelectBook) {
+                  this.props.handleSelectedBooks(
+                    this.props.isSelected
+                      ? this.props.selectedBooks.filter(
+                          (item) => item !== this.props.book.key
+                        )
+                      : [...this.props.selectedBooks, this.props.book.key]
+                  );
+                } else {
+                  this.props.handleSelectBook(true);
+                  this.props.handleSelectedBooks([this.props.book.key]);
+                }
+                this.setState({ isHover: false });
+                event?.stopPropagation();
+              }}
+              style={
+                this.props.isSelected
+                  ? { opacity: 1 }
+                  : {
+                      color: "#eee",
+                    }
+              }
             ></span>
           ) : null}
 
-          {this.state.isOpenConfig && !this.props.isSelectBook ? (
-            <>
-              {this.props.book.format !== "PDF" && (
-                <div className="reading-progress-icon">
-                  <div style={{ position: "relative", left: "4px" }}>
-                    {percentage
-                      ? Math.floor(percentage * 100) < 10
-                        ? "0" + Math.floor(percentage * 100)
-                        : Math.floor(percentage * 100) === 100
-                        ? "完"
-                        : Math.floor(percentage * 100)
-                      : "00"}
-                    <span className="reading-percentage-char">%</span>
-                  </div>
-                </div>
-              )}
-              <span
-                className="icon-more book-more-action"
-                onClick={(event) => {
-                  this.handleMoreAction(event);
-                }}
-              ></span>
-              <span
-                className="icon-love book-love-icon"
-                onClick={() => {
-                  this.handleLoveBook();
-                }}
-              ></span>
-            </>
-          ) : null}
+          <p className="book-item-title">{this.props.book.name}</p>
+          <div className="reading-progress-icon">
+            <div style={{ position: "relative", left: "4px" }}>
+              {percentage
+                ? Math.floor(parseFloat(percentage) * 100) === 0
+                  ? "New"
+                  : Math.floor(parseFloat(percentage) * 100) < 10
+                  ? "0" + Math.floor(parseFloat(percentage) * 100)
+                  : Math.floor(parseFloat(percentage) * 100) === 100
+                  ? "Done"
+                  : Math.floor(parseFloat(percentage) * 100)
+                : "00"}
+              {Math.floor(parseFloat(percentage) * 100) > 0 &&
+                Math.floor(parseFloat(percentage) * 100) < 100 && (
+                  <span>%</span>
+                )}
+            </div>
+          </div>
+          <span
+            className="icon-more book-more-action"
+            onClick={(event) => {
+              this.handleMoreAction(event);
+            }}
+          ></span>
         </div>
 
         {this.props.isOpenActionDialog &&

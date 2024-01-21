@@ -4,6 +4,7 @@
   height: 173px;
   opacity: 1;
   z-index: 10;
+  overflow-x: hidden;
 }
 .book-cover {
   float: left;
@@ -62,11 +63,19 @@
   line-height: 27px;
   opacity: 1;
   cursor: pointer;
+  width: 23%;
+  overflow-x: hidden;
+  text-align: center;
+  margin: 1% 1%;
 }
 .book-bookmark-title {
   line-height: 27px;
   opacity: 1;
   cursor: pointer;
+  max-width: 40%;
+  overflow-x: hidden;
+  text-align: center;
+  margin: 1% 1%;
 }
 .navigation-body-parent {
   position: absolute;
@@ -147,7 +156,7 @@
   top: 110px;
   font-size: 15px;
   height: calc(100vh - 170px);
-  overflow: scroll;
+  overflow-y: scroll;
 }
 .nav-search-list-item {
   padding: 8px;

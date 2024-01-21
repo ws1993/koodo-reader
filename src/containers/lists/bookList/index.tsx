@@ -4,6 +4,7 @@ import {
   handleFetchBooks,
   handleMode,
   handleShelfIndex,
+  handleDeleteDialog,
 } from "../../../store/actions";
 import { stateType } from "../../../store";
 import { withTranslation } from "react-i18next";
@@ -32,8 +33,9 @@ const actionCreator = {
   handleMode,
   handleShelfIndex,
   handleFetchBooks,
+  handleDeleteDialog,
 };
 export default connect(
   mappropsToProps,
   actionCreator
-)(withTranslation()(BookList as any));
+)(withTranslation()(BookList as any) as any);

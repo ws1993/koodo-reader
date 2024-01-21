@@ -1,7 +1,7 @@
 import React from "react";
 import "./updateInfo.css";
 import { UpdateInfoProps, UpdateInfoState } from "./interface";
-import { version } from "../../../../package.json";
+import packageInfo from "../../../../package.json";
 import { Trans } from "react-i18next";
 import axios from "axios";
 import Lottie from "react-lottie";
@@ -9,6 +9,7 @@ import animationNew from "../../../assets/lotties/new.json";
 import animationSuccess from "../../../assets/lotties/success.json";
 import StorageUtil from "../../../utils/serviceUtils/storageUtil";
 import { openExternalUrl } from "../../../utils/serviceUtils/urlUtil";
+import { isElectron } from "react-device-detect";
 const newOptions = {
   loop: false,
   autoplay: true,
@@ -40,15 +41,11 @@ class UpdateInfo extends React.Component<UpdateInfoProps, UpdateInfoState> {
         .get(`https://koodo.960960.xyz/api/update?name=${navigator.language}`)
         .then((res) => {
           const newVersion = res.data.log.version;
-          console.log(
-            res,
-            version,
-            newVersion,
-            version.localeCompare(newVersion)
-          );
-
+          if (!isElectron) {
+            return;
+          }
           setTimeout(() => {
-            if (version.localeCompare(newVersion) < 0) {
+            if (packageInfo.version.localeCompare(newVersion) < 0) {
               if (StorageUtil.getReaderConfig("isDisableUpdate") !== "yes") {
                 this.setState({ updateLog: res.data.log });
                 this.props.handleNewDialog(true);
@@ -65,9 +62,9 @@ class UpdateInfo extends React.Component<UpdateInfoProps, UpdateInfoState> {
             }
             StorageUtil.setReaderConfig(
               "appInfo",
-              version.localeCompare(newVersion) < 0
+              packageInfo.version.localeCompare(newVersion) < 0
                 ? "new"
-                : version.localeCompare(newVersion) === 0
+                : packageInfo.version.localeCompare(newVersion) === 0
                 ? "stable"
                 : "dev"
             );
@@ -108,7 +105,7 @@ class UpdateInfo extends React.Component<UpdateInfoProps, UpdateInfoState> {
             >
               <div className="new-version-title">
                 {this.state.isUpdated ? (
-                  <Trans>Update Complete</Trans>
+                  <Trans>Update complete</Trans>
                 ) : (
                   <>
                     <Trans>Update to</Trans>
@@ -127,7 +124,7 @@ class UpdateInfo extends React.Component<UpdateInfoProps, UpdateInfoState> {
               {this.state.isUpdated && (
                 <div className="update-info-text">
                   <Trans>You successfully update to</Trans>
-                  {" " + version}
+                  {" " + packageInfo.version}
                 </div>
               )}
               <div className="update-dialog-info" style={{ height: 420 }}>
@@ -156,7 +153,7 @@ class UpdateInfo extends React.Component<UpdateInfoProps, UpdateInfoState> {
                 >
                   {this.state.isUpdated ? (
                     <>
-                      <Trans>Changelog</Trans>
+                      <Trans>Change log</Trans>
                     </>
                   ) : (
                     <Trans>Download</Trans>
@@ -165,7 +162,7 @@ class UpdateInfo extends React.Component<UpdateInfoProps, UpdateInfoState> {
                 {this.state.updateLog && (
                   <>
                     <p className="update-dialog-new-title">
-                      <Trans>What's New</Trans>
+                      <Trans>What's new</Trans>
                     </p>
                     <ul className="update-dialog-new-container">
                       {this.renderList(this.state.updateLog.new)}

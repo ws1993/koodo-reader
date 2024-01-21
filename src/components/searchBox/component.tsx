@@ -93,7 +93,7 @@ class SearchBox extends React.Component<SearchBoxProps> {
           }}
           placeholder={
             this.props.isNavSearch || this.props.mode === "nav"
-              ? this.props.t("Search in the book")
+              ? this.props.t("Search in the Book")
               : this.props.tabMode === "note"
               ? this.props.t("Search my notes")
               : this.props.tabMode === "digest"
@@ -102,8 +102,12 @@ class SearchBox extends React.Component<SearchBoxProps> {
           }
           style={
             this.props.mode === "nav"
-              ? { width: this.props.width, height: this.props.height }
-              : { paddingRight: "50px" }
+              ? {
+                  width: this.props.width,
+                  height: this.props.height,
+                  paddingRight: "30px",
+                }
+              : {}
           }
           onCompositionStart={() => {
             if (StorageUtil.getReaderConfig("isNavLocked") === "yes") {
@@ -133,13 +137,15 @@ class SearchBox extends React.Component<SearchBoxProps> {
             <span className="icon-close"></span>
           </span>
         ) : (
-          <span
-            className="icon-search header-search-icon"
-            onClick={() => {
-              this.handleMouse();
-            }}
-            style={this.props.mode === "nav" ? { right: "5px" } : {}}
-          ></span>
+          <span className="header-search-text">
+            <span
+              className="icon-search header-search-icon"
+              onClick={() => {
+                this.handleMouse();
+              }}
+              style={this.props.mode === "nav" ? { right: "5px" } : {}}
+            ></span>
+          </span>
         )}
       </div>
     );

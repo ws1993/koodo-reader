@@ -1,5 +1,4 @@
-import _ from "underscore";
-
+declare var window: any;
 class RecordLocation {
   static recordCfi(bookKey: string, cfi: string, percentage: number) {
     let json = localStorage.getItem("recordLocation");
@@ -17,24 +16,40 @@ class RecordLocation {
     bookKey: string,
     text: string,
     chapterTitle: string,
+    chapterDocIndex: string,
+    chapterHref: string,
     count: string,
     percentage: string,
-    cfi: string = ""
+    cfi: string,
+    page: string
   ) {
     if (cfi) {
       let json = localStorage.getItem("recordLocation");
       let obj = JSON.parse(json || "{}");
-      obj[bookKey] = { text, chapterTitle, count, percentage, cfi };
+      obj[bookKey] = {
+        text,
+        chapterTitle,
+        chapterDocIndex,
+        chapterHref,
+        count,
+        percentage,
+        cfi,
+        page,
+      };
       localStorage.setItem("recordLocation", JSON.stringify(obj));
     } else {
-      if (
-        (!text || !chapterTitle || !count || !percentage) &&
-        document.location.href.indexOf("/cb") === -1 //漫画的情况，cbr,cbt,cbz
-      )
-        return;
       let json = localStorage.getItem("recordLocation");
       let obj = JSON.parse(json || "{}");
-      obj[bookKey] = { text, chapterTitle, count, percentage, cfi };
+      obj[bookKey] = {
+        text,
+        chapterTitle,
+        chapterDocIndex,
+        chapterHref,
+        count,
+        percentage,
+        cfi,
+        page,
+      };
       localStorage.setItem("recordLocation", JSON.stringify(obj));
     }
   }
@@ -47,12 +62,12 @@ class RecordLocation {
   static getPDFLocation(fingerprint: string) {
     let json = localStorage.getItem("pdfjs.history");
     let arr = JSON.parse(json || "{}").files || [];
-    return arr[_.findLastIndex(arr, { fingerprint })] || {};
+    return arr[window._.findLastIndex(arr, { fingerprint })] || {};
   }
   static recordPDFLocation(fingerprint: string, obj: object) {
     let json = localStorage.getItem("pdfjs.history");
     let _obj = JSON.parse(json || "{}");
-    _obj.files[_.findLastIndex(_obj.files, { fingerprint })] = obj;
+    _obj.files[window._.findLastIndex(_obj.files, { fingerprint })] = obj;
     localStorage.setItem("pdfjs.history", JSON.stringify(_obj));
   }
   static getAllCfi() {

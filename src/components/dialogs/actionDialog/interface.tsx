@@ -1,11 +1,18 @@
+import { RouteComponentProps } from "react-router";
 import BookModel from "../../../model/Book";
+import NoteModel from "../../../model/Note";
 
-export interface ActionDialogProps {
+export interface ActionDialogProps extends RouteComponentProps<any> {
   book: BookModel;
+  books: BookModel[];
+  deletedBooks: BookModel[];
+  notes: NoteModel[];
   currentBook: BookModel;
   left: number;
   top: number;
   mode: string;
+  isSelectBook: boolean;
+
   handleFetchBooks: () => void;
   handleDeleteDialog: (isShow: boolean) => void;
   handleFetchBookmarks: () => void;
@@ -15,4 +22,12 @@ export interface ActionDialogProps {
   handleEditDialog: (isShow: boolean) => void;
   handleAddDialog: (isShow: boolean) => void;
   handleActionDialog: (isShow: boolean) => void;
+  handleDetailDialog: (isShow: boolean) => void;
+  handleSelectBook: (isSelectBook: boolean) => void;
+  handleSelectedBooks: (selectedBooks: string[]) => void;
+}
+export interface ActionDialogState {
+  isShowExport: boolean;
+  isShowDetail: boolean;
+  isExceed: boolean;
 }

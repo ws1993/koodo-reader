@@ -3,12 +3,12 @@ import "./settingDialog.css";
 import { SettingInfoProps, SettingInfoState } from "./interface";
 import { Trans } from "react-i18next";
 import i18n from "../../../i18n";
-import { version } from "../../../../package.json";
+import packageInfo from "../../../../package.json";
 import StorageUtil from "../../../utils/serviceUtils/storageUtil";
 import { changePath } from "../../../utils/syncUtils/common";
 import { isElectron } from "react-device-detect";
 import { dropdownList } from "../../../constants/dropdownList";
-import { Tooltip } from "react-tippy";
+
 import { restore } from "../../../utils/syncUtils/restoreUtil";
 import {
   settingList,
@@ -17,9 +17,10 @@ import {
   skinList,
 } from "../../../constants/settingList";
 import { themeList } from "../../../constants/themeList";
-import _ from "underscore";
 import toast from "react-hot-toast";
 import { openExternalUrl } from "../../../utils/serviceUtils/urlUtil";
+import ManagerUtil from "../../../utils/fileUtils/managerUtil";
+declare var window: any;
 class SettingDialog extends React.Component<
   SettingInfoProps,
   SettingInfoState
@@ -35,19 +36,34 @@ class SettingDialog extends React.Component<
       isAutoFullscreen:
         StorageUtil.getReaderConfig("isAutoFullscreen") === "yes",
       isPreventAdd: StorageUtil.getReaderConfig("isPreventAdd") === "yes",
+      isLemmatizeWord: StorageUtil.getReaderConfig("isLemmatizeWord") === "yes",
       isOpenBook: StorageUtil.getReaderConfig("isOpenBook") === "yes",
       isExpandContent: StorageUtil.getReaderConfig("isExpandContent") === "yes",
+      isDisablePopup: StorageUtil.getReaderConfig("isDisablePopup") === "yes",
+      isDisableTrashBin:
+        StorageUtil.getReaderConfig("isDisableTrashBin") === "yes",
+      isDeleteShelfBook:
+        StorageUtil.getReaderConfig("isDeleteShelfBook") === "yes",
+      isHideShelfBook: StorageUtil.getReaderConfig("isHideShelfBook") === "yes",
       isPreventSleep: StorageUtil.getReaderConfig("isPreventSleep") === "yes",
       isOpenInMain: StorageUtil.getReaderConfig("isOpenInMain") === "yes",
       isDisableUpdate: StorageUtil.getReaderConfig("isDisableUpdate") === "yes",
+      isPrecacheBook: StorageUtil.getReaderConfig("isPrecacheBook") === "yes",
       appSkin: StorageUtil.getReaderConfig("appSkin"),
-      isDisableAnalytics:
-        StorageUtil.getReaderConfig("isDisableAnalytics") === "yes",
       isUseBuiltIn: StorageUtil.getReaderConfig("isUseBuiltIn") === "yes",
-      isPDFCover: StorageUtil.getReaderConfig("isPDFCover") === "yes",
-      currentThemeIndex: _.findLastIndex(themeList, {
+      isDisableCrop: StorageUtil.getReaderConfig("isDisableCrop") === "yes",
+      isDisablePDFCover:
+        StorageUtil.getReaderConfig("isDisablePDFCover") === "yes",
+      currentThemeIndex: window._.findLastIndex(themeList, {
         name: StorageUtil.getReaderConfig("themeColor"),
       }),
+      storageLocation: isElectron
+        ? localStorage.getItem("storageLocation")
+          ? localStorage.getItem("storageLocation")
+          : window
+              .require("electron")
+              .ipcRenderer.sendSync("storage-location", "ping")
+        : "",
     };
   }
   componentDidMount() {
@@ -64,26 +80,23 @@ class SettingDialog extends React.Component<
       ?.children[
         langList
           .map((item) => item.value)
-          .indexOf(
-            StorageUtil.getReaderConfig("lang") ||
-              (navigator.language.indexOf("zh") > -1 ? "zh" : "en")
-          )
+          .indexOf(StorageUtil.getReaderConfig("lang") || "en")
       ]?.setAttribute("selected", "selected");
     document.getElementsByClassName("lang-setting-dropdown")[2]?.children[
-      _.findLastIndex(searchList, {
+      window._.findLastIndex(searchList, {
         value:
           StorageUtil.getReaderConfig("searchEngine") ||
           (navigator.language === "zh-CN" ? "baidu" : "google"),
       })
     ]?.setAttribute("selected", "selected");
     document.getElementsByClassName("lang-setting-dropdown")[3]?.children[
-      _.findLastIndex(skinList, {
-        value: StorageUtil.getReaderConfig("appSkin") || "light",
+      window._.findLastIndex(skinList, {
+        value: StorageUtil.getReaderConfig("appSkin") || "system",
       })
     ]?.setAttribute("selected", "selected");
   }
   handleRest = (bool: boolean) => {
-    toast.success(this.props.t("Change Successfully"));
+    toast.success(this.props.t("Change successful"));
   };
   changeLanguage = (lng: string) => {
     i18n.changeLanguage(lng);
@@ -111,11 +124,7 @@ class SettingDialog extends React.Component<
       StorageUtil.setReaderConfig("textColor", "rgba(0,0,0,1)");
     }
 
-    if (isElectron) {
-      toast(this.props.t("Try refresh or restart"));
-    } else {
-      window.location.reload();
-    }
+    ManagerUtil.reloadManager();
   };
   changeFont = (font: string) => {
     let body = document.getElementsByTagName("body")[0];
@@ -156,9 +165,9 @@ class SettingDialog extends React.Component<
 
     let result = await restore(fileTemp, true);
     if (result) {
-      toast.success(this.props.t("Change Successfully"));
+      toast.success(this.props.t("Change successful"));
     } else {
-      toast.error(this.props.t("Change Failed"));
+      toast.error(this.props.t("Change failed"));
     }
   };
   handleChangeLocation = async () => {
@@ -177,11 +186,12 @@ class SettingDialog extends React.Component<
       this.syncFromLocation();
     } else if (result === 2) {
       this.props.handleFetchBooks();
-      toast.success(this.props.t("Change Successfully"));
+      toast.success(this.props.t("Change successful"));
     } else {
-      toast.error(this.props.t("Change Failed"));
+      toast.error(this.props.t("Change failed"));
     }
     localStorage.setItem("storageLocation", path.filePaths[0]);
+    this.setState({ storageLocation: path.filePaths[0] });
     document.getElementsByClassName(
       "setting-dialog-location-title"
     )[0].innerHTML =
@@ -193,11 +203,7 @@ class SettingDialog extends React.Component<
   handleTheme = (name: string, index: number) => {
     this.setState({ currentThemeIndex: index });
     StorageUtil.setReaderConfig("themeColor", name);
-    if (isElectron) {
-      toast(this.props.t("Try refresh or restart"));
-    } else {
-      window.location.reload();
-    }
+    ManagerUtil.reloadManager();
   };
   handleMergeWord = () => {
     if (this.state.isOpenInMain && !this.state.isMergeWord) {
@@ -205,6 +211,12 @@ class SettingDialog extends React.Component<
       return;
     }
     this.handleSetting("isMergeWord");
+    this.handleMoyu();
+  };
+  handleMoyu = () => {
+    if (StorageUtil.getReaderConfig("isMergeWord") === "yes") {
+      StorageUtil.setReaderConfig("isHideBackground", "yes");
+    }
   };
   handleOpenInMain = () => {
     if (this.state.isMergeWord && !this.state.isOpenInMain) {
@@ -221,15 +233,15 @@ class SettingDialog extends React.Component<
         </p>
         <p className="setting-subtitle">
           <Trans>Version</Trans>
-          {version}
+          {packageInfo.version}
           &nbsp;&nbsp;
           <Trans>
             {StorageUtil.getReaderConfig("appInfo") === "new"
-              ? "New Version Available"
+              ? "New version available"
               : StorageUtil.getReaderConfig("appInfo") === "stable"
-              ? "Latest Stable Version"
+              ? "Latest stable version"
               : StorageUtil.getReaderConfig("appInfo") === "dev"
-              ? "Developer Version"
+              ? "Developer version"
               : ""}
           </Trans>
         </p>
@@ -296,27 +308,20 @@ class SettingDialog extends React.Component<
             );
           })}
           <div className="setting-dialog-new-title">
-            <Trans>Theme Color</Trans>
+            <Trans>Theme color</Trans>
             <ul className="theme-setting-container">
               {themeList.map((item, index) => (
-                <Tooltip
-                  key={item.id}
-                  title={this.props.t(item.title)}
-                  position="top"
-                  trigger="mouseenter"
-                >
-                  <li
-                    className={
-                      index === this.state.currentThemeIndex
-                        ? "active-color theme-setting-item"
-                        : "theme-setting-item"
-                    }
-                    onClick={() => {
-                      this.handleTheme(item.name, index);
-                    }}
-                    style={{ backgroundColor: item.color }}
-                  ></li>
-                </Tooltip>
+                <li
+                  className={
+                    index === this.state.currentThemeIndex
+                      ? "active-color theme-setting-item"
+                      : "theme-setting-item"
+                  }
+                  onClick={() => {
+                    this.handleTheme(item.name, index);
+                  }}
+                  style={{ backgroundColor: item.color }}
+                ></li>
               ))}
             </ul>
           </div>
@@ -336,17 +341,13 @@ class SettingDialog extends React.Component<
                 </span>
               </div>
               <div className="setting-dialog-location-title">
-                {localStorage.getItem("storageLocation")
-                  ? localStorage.getItem("storageLocation")
-                  : window
-                      .require("electron")
-                      .ipcRenderer.sendSync("storage-location", "ping")}
+                {this.state.storageLocation}
               </div>
             </>
           )}
 
           <div className="setting-dialog-new-title">
-            <Trans>System Font</Trans>
+            <Trans>System font</Trans>
             <select
               name=""
               className="lang-setting-dropdown"

@@ -4,6 +4,7 @@ import { Trans } from "react-i18next";
 import { NavListProps, NavListState } from "./interface";
 import DeleteIcon from "../../../components/deleteIcon";
 import toast from "react-hot-toast";
+import RecordLocation from "../../../utils/readUtils/recordLocation";
 class NavList extends React.Component<NavListProps, NavListState> {
   constructor(props: NavListProps) {
     super(props);
@@ -13,6 +14,7 @@ class NavList extends React.Component<NavListProps, NavListState> {
   }
   //跳转到图书的指定位置
   async handleJump(cfi: string) {
+    //书签跳转
     if (!cfi) {
       toast(this.props.t("Wrong bookmark"));
       return;
@@ -25,16 +27,45 @@ class NavList extends React.Component<NavListProps, NavListState> {
         cfi: cfi,
       };
     }
-
-    await this.props.htmlBook.rendition.goToPosition(
-      JSON.stringify({
-        text: bookLocation.text,
-        chapterTitle: bookLocation.chapterTitle,
-        count: bookLocation.count,
-        percentage: bookLocation.percentage,
-        cfi: bookLocation.cfi,
-      })
-    );
+    //compatile with lower version(1.5.1)
+    if (bookLocation.cfi) {
+      await this.props.htmlBook.rendition.goToChapter(
+        bookLocation.chapterDocIndex,
+        bookLocation.chapterHref,
+        bookLocation.chapterTitle
+      );
+    } else {
+      await this.props.htmlBook.rendition.goToPosition(
+        JSON.stringify({
+          text: bookLocation.text,
+          chapterTitle: bookLocation.chapterTitle,
+          chapterDocIndex: bookLocation.chapterDocIndex,
+          chapterHref: bookLocation.chapterHref,
+          count: bookLocation.count,
+          percentage: bookLocation.percentage,
+          cfi: bookLocation.cfi,
+          page: bookLocation.page,
+        })
+      );
+    }
+    this.handleDisplayBookmark();
+  }
+  handleDisplayBookmark() {
+    this.props.handleShowBookmark(false);
+    let bookLocation: {
+      text: string;
+      count: string;
+      chapterTitle: string;
+      chapterDocIndex: string;
+      chapterHref: string;
+      percentage: string;
+      cfi: string;
+    } = RecordLocation.getHtmlLocation(this.props.currentBook.key);
+    this.props.bookmarks.forEach((item) => {
+      if (item.cfi === JSON.stringify(bookLocation)) {
+        this.props.handleShowBookmark(true);
+      }
+    });
   }
   handleShowDelete = (index: number) => {
     this.setState({ deleteIndex: index });
@@ -84,12 +115,12 @@ class NavList extends React.Component<NavListProps, NavListState> {
             ) : null}
             <div
               className="book-bookmark-link"
-              onClick={() => {
-                this.handleJump(item.cfi);
+              onClick={async () => {
+                await this.handleJump(item.cfi);
               }}
               style={{ cursor: "pointer" }}
             >
-              <Trans>Go To</Trans>
+              <Trans>Go to</Trans>
             </div>
           </li>
         );

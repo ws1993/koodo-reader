@@ -1,15 +1,19 @@
 import React from "react";
 import RecentBooks from "../../utils/readUtils/recordRecent";
 import { ViewerProps, ViewerState } from "./interface";
-import localforage from "localforage";
+
 import { withRouter } from "react-router-dom";
-import _ from "underscore";
 import BookUtil from "../../utils/fileUtils/bookUtil";
-import BackToMain from "../../components/backToMain";
+import PDFWidget from "../../components/pdfWidget";
 import PopupMenu from "../../components/popups/popupMenu";
 import { Toaster } from "react-hot-toast";
 import { handleLinkJump } from "../../utils/readUtils/linkUtil";
 import { pdfMouseEvent } from "../../utils/serviceUtils/mouseEvent";
+import StorageUtil from "../../utils/serviceUtils/storageUtil";
+import PopupBox from "../../components/popups/popupBox";
+import { renderHighlighters } from "../../utils/serviceUtils/noteUtil";
+import { getPDFIframeDoc } from "../../utils/serviceUtils/docUtil";
+declare var window: any;
 class Viewer extends React.Component<ViewerProps, ViewerState> {
   constructor(props: ViewerProps) {
     super(props);
@@ -19,9 +23,8 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
       cfiRange: null,
       contents: null,
       rect: null,
-      pageWidth: 0,
-      pageHeight: 0,
       loading: true,
+      isDisablePopup: StorageUtil.getReaderConfig("isDisablePopup") === "yes",
     };
   }
   UNSAFE_componentWillMount() {
@@ -30,15 +33,17 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
     this.props.handleFetchBooks();
   }
   componentDidMount() {
-    let url = document.location.href.split("/");
-    let key = url[url.length - 1].split("?")[0];
-    localforage.getItem("books").then((result: any) => {
+    let url = document.location.href;
+    let firstIndexOfQuestion = url.indexOf("?");
+    let lastIndexOfSlash = url.lastIndexOf("/", firstIndexOfQuestion);
+    let key = url.substring(lastIndexOfSlash + 1, firstIndexOfQuestion);
+    window.localforage.getItem("books").then((result: any) => {
       let book;
       if (this.props.currentBook.key) {
         book = this.props.currentBook;
       } else {
         book =
-          result[_.findIndex(result, { key })] ||
+          result[window._.findIndex(result, { key })] ||
           JSON.parse(localStorage.getItem("tempBook") || "{}");
       }
 
@@ -51,7 +56,7 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
     });
     document
       .querySelector(".ebook-viewer")
-      ?.setAttribute("style", "height:100%");
+      ?.setAttribute("style", "height:100%; overflow: hidden;");
     let pageArea = document.getElementById("page-area");
     if (!pageArea) return;
     let iframe = pageArea.getElementsByTagName("iframe")[0];
@@ -61,24 +66,61 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
         iframe.contentWindow || iframe.contentDocument?.defaultView;
       this.setState({ loading: false });
       pdfMouseEvent();
-      doc.document.addEventListener("click", (event: any) => {
+      doc.document.addEventListener("click", async (event: any) => {
         event.preventDefault();
-        handleLinkJump(event);
+        await handleLinkJump(event);
       });
 
-      doc.document.addEventListener("mouseup", () => {
-        if (!doc!.getSelection()) return;
+      doc.document.addEventListener("mouseup", (event) => {
+        if (this.state.isDisablePopup) return;
+        if (!doc!.getSelection() || doc!.getSelection().rangeCount === 0)
+          return;
+        event.preventDefault();
         var rect = doc!.getSelection()!.getRangeAt(0).getBoundingClientRect();
         this.setState({
           rect,
-          pageWidth: doc.document.body.scrollWidth,
-          pageHeight: doc.document.body.scrollHeight,
         });
         // iWin.getSelection() && showHighlight(getHightlightCoords());
       });
+      doc.addEventListener("contextmenu", (event) => {
+        if (!this.state.isDisablePopup) return;
+        if (!doc!.getSelection() || doc!.getSelection().rangeCount === 0)
+          return;
+        event.preventDefault();
+        var rect = doc!.getSelection()!.getRangeAt(0).getBoundingClientRect();
+        this.setState({
+          rect,
+        });
+      });
+
+      setTimeout(() => {
+        this.handleHighlight();
+        let iWin = getPDFIframeDoc();
+        if (!iWin) return;
+        if (!iWin.PDFViewerApplication.eventBus) return;
+        iWin.PDFViewerApplication.eventBus.on(
+          "pagechanging",
+          this.handleHighlight
+        );
+      }, 3000);
     };
   }
+  handleHighlight = () => {
+    let highlighters: any = this.props.notes;
+    if (!highlighters) return;
+    let highlightersByChapter = highlighters;
 
+    renderHighlighters(
+      highlightersByChapter,
+      this.props.currentBook.format,
+      this.handleNoteClick
+    );
+  };
+  handleNoteClick = (event: Event) => {
+    this.props.handleNoteKey((event.target as any).dataset.key);
+    this.props.handleMenuMode("note");
+    this.props.handleOpenMenu(true);
+  };
   render() {
     return (
       <div className="ebook-viewer" id="page-area">
@@ -91,13 +133,28 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
                 },
               },
               rect: this.state.rect,
-              pageWidth: this.state.pageWidth,
-              pageHeight: this.state.pageHeight,
-              chapterIndex: 0,
+              chapterDocIndex: 0,
               chapter: "0",
             }}
           />
         )}
+        {this.props.isOpenMenu &&
+        (this.props.menuMode === "dict" ||
+          this.props.menuMode === "trans" ||
+          this.props.menuMode === "note") ? (
+          <PopupBox
+            {...{
+              rendition: {
+                on: (status: string, callback: any) => {
+                  callback();
+                },
+              },
+              rect: this.state.rect,
+              chapterDocIndex: 0,
+              chapter: "0",
+            }}
+          />
+        ) : null}
         <iframe
           src={this.state.href}
           title={this.state.title}
@@ -106,7 +163,7 @@ class Viewer extends React.Component<ViewerProps, ViewerState> {
         >
           Loading
         </iframe>
-        <BackToMain /> <Toaster />
+        <PDFWidget /> <Toaster />
       </div>
     );
   }

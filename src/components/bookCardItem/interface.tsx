@@ -9,6 +9,8 @@ export interface BookCardProps extends RouteComponentProps<any> {
   isSelected: boolean;
   dragItem: string;
   selectedBooks: string[];
+  mode: string;
+  handleSelectBook: (isSelectBook: boolean) => void;
   handleReadingBook: (book: BookModel) => void;
   handleActionDialog: (isShowActionDialog: boolean) => void;
   t: (title: string) => string;
@@ -17,8 +19,8 @@ export interface BookCardProps extends RouteComponentProps<any> {
   handleDeleteDialog: (isShow: boolean) => void;
 }
 export interface BookCardState {
-  isOpenConfig: boolean;
   isFavorite: boolean;
+  isHover: boolean;
   left: number;
   top: number;
   direction: string;

@@ -11,7 +11,6 @@ import { Redirect } from "react-router-dom";
 import NoteTag from "../../../components/noteTag";
 import BookUtil from "../../../utils/fileUtils/bookUtil";
 import toast from "react-hot-toast";
-import StorageUtil from "../../../utils/serviceUtils/storageUtil";
 import BookModel from "../../../model/Book";
 class CardList extends React.Component<CardListProps, CardListStates> {
   constructor(props: CardListProps) {
@@ -53,7 +52,7 @@ class CardList extends React.Component<CardListProps, CardListStates> {
       RecordLocation.recordPDFLocation(book.md5.split("-")[0], bookLocation);
     } else {
       let bookLocation: any = {};
-      //兼容1.4.2之前的版本
+      //compatile wiht lower version(1.4.2)
       try {
         bookLocation = JSON.parse(note.cfi) || {};
       } catch (error) {
@@ -64,17 +63,16 @@ class CardList extends React.Component<CardListProps, CardListStates> {
         note.bookKey,
         bookLocation.text,
         bookLocation.chapterTitle,
+        bookLocation.chapterDocIndex,
+        bookLocation.chapterHref,
         bookLocation.count,
         bookLocation.percentage,
-        bookLocation.cfi
+        bookLocation.cfi,
+        bookLocation.page
       );
     }
 
-    if (StorageUtil.getReaderConfig("isOpenInMain") === "yes") {
-      this.props.history.push(BookUtil.getBookUrl(book));
-    } else {
-      BookUtil.RedirectBook(book);
-    }
+    BookUtil.RedirectBook(book, this.props.t, this.props.history);
   };
   render() {
     let { cards } = this.props;
@@ -168,7 +166,7 @@ class CardList extends React.Component<CardListProps, CardListStates> {
                   style={{ bottom: "10px" }}
                 >
                   {this.props.mode === "note" ? (
-                    <Trans>{"More Notes"}</Trans>
+                    <Trans>{"More notes"}</Trans>
                   ) : (
                     <Trans>{"Show in the book"}</Trans>
                   )}
@@ -197,4 +195,4 @@ class CardList extends React.Component<CardListProps, CardListStates> {
   }
 }
 
-export default withRouter(CardList);
+export default withRouter(CardList as any);

@@ -8,7 +8,6 @@ import SettingSwitch from "../../../components/readerSettings/settingSwitch";
 import { SettingPanelProps, SettingPanelState } from "./interface";
 import { Trans } from "react-i18next";
 import StorageUtil from "../../../utils/serviceUtils/storageUtil";
-import { Tooltip } from "react-tippy";
 
 class SettingPanel extends React.Component<
   SettingPanelProps,
@@ -35,25 +34,19 @@ class SettingPanel extends React.Component<
   render() {
     return (
       <div className="setting-panel-parent">
-        <Tooltip
-          title={this.props.t(this.state.isSettingLocked ? "Unlock" : "Lock")}
-          position="bottom"
-          trigger="mouseenter"
-          style={{ height: "30px", display: "inline-block", float: "left" }}
-        >
-          <span
-            className={
-              this.state.isSettingLocked
-                ? "icon-lock lock-icon"
-                : "icon-unlock lock-icon"
-            }
-            onClick={() => {
-              this.handleLock();
-            }}
-          ></span>
-        </Tooltip>
+        <span
+          className={
+            this.state.isSettingLocked
+              ? "icon-lock lock-icon"
+              : "icon-unlock lock-icon"
+          }
+          onClick={() => {
+            this.handleLock();
+          }}
+        ></span>
+
         <div className="setting-panel-title">
-          <Trans>Reading Option</Trans>
+          <Trans>Reading option</Trans>
         </div>
         <div className="setting-panel">
           <ModeControl />
@@ -66,7 +59,7 @@ class SettingPanel extends React.Component<
               minLabel: "13",
               maxLabel: "40",
               step: 1,
-              title: "Font Size",
+              title: "Font size",
             }}
           />
 
@@ -92,7 +85,7 @@ class SettingPanel extends React.Component<
               minLabel: "0",
               maxLabel: "20",
               step: 1,
-              title: "Letter Spacing",
+              title: "Letter spacing",
             }}
           />
 
@@ -104,7 +97,7 @@ class SettingPanel extends React.Component<
               minLabel: "0",
               maxLabel: "60",
               step: 1,
-              title: "Paragraph Spacing",
+              title: "Paragraph spacing",
             }}
           />
 
@@ -117,17 +110,17 @@ class SettingPanel extends React.Component<
                 minLabel: "0.5",
                 maxLabel: "3",
                 step: 0.1,
-                title: "Page Width",
+                title: "Page width",
               }}
             />
           ) : null}
           <SliderList
             {...{
-              maxValue: 2,
-              minValue: 0.5,
+              maxValue: 1,
+              minValue: 0.3,
               mode: "brightness",
-              minLabel: "0.5",
-              maxLabel: "2",
+              minLabel: "0.3",
+              maxLabel: "1",
               step: 0.1,
               title: "Brightness",
             }}

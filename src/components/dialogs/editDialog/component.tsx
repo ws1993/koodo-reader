@@ -1,9 +1,10 @@
 import React from "react";
 import "./editDialog.css";
-import localforage from "localforage";
+
 import { Trans } from "react-i18next";
 import { EditDialogProps, EditDialogState } from "./interface";
 import toast from "react-hot-toast";
+declare var window: any;
 class EditDialog extends React.Component<EditDialogProps, EditDialogState> {
   constructor(props: EditDialogProps) {
     super(props);
@@ -40,11 +41,11 @@ class EditDialog extends React.Component<EditDialogProps, EditDialogState> {
         return false;
       }
     });
-    localforage.setItem("books", books).then(() => {
+    window.localforage.setItem("books", books).then(() => {
       this.props.handleEditDialog(false);
       this.props.handleFetchBooks();
     });
-    toast.success(this.props.t("Edit Successfully"));
+    toast.success(this.props.t("Edition successful"));
     this.props.handleActionDialog(false);
   };
   render() {
@@ -55,7 +56,7 @@ class EditDialog extends React.Component<EditDialogProps, EditDialogState> {
         </div>
         <div className="edit-dialog-book-name-container">
           <div className="edit-dialog-book-name-text">
-            <Trans>Book Name</Trans>
+            <Trans>Book name</Trans>
           </div>
           <input className="edit-dialog-book-name-box" />
         </div>

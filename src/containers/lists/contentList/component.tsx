@@ -2,8 +2,7 @@ import React from "react";
 import "./contentList.css";
 import { ContentListProps, ContentListState } from "./interface";
 import StorageUtil from "../../../utils/serviceUtils/storageUtil";
-import _ from "underscore";
-import RecordLocation from "../../../utils/readUtils/recordLocation";
+declare var window: any;
 class ContentList extends React.Component<ContentListProps, ContentListState> {
   constructor(props: ContentListProps) {
     super(props);
@@ -21,35 +20,21 @@ class ContentList extends React.Component<ContentListProps, ContentListState> {
         chapters: this.props.htmlBook.chapters,
       });
   }
-  flatChapter(chapters: any) {
-    let newChapter: any = [];
-    for (let i = 0; i < chapters.length; i++) {
-      if (chapters[i].subitems[0]) {
-        newChapter.push(chapters[i]);
-        newChapter = newChapter.concat(this.flatChapter(chapters[i].subitems));
-      } else {
-        newChapter.push(chapters[i]);
-      }
-    }
-    return newChapter;
-  }
-  handleJump(event: any) {
+  async handleJump(event: any) {
     event.preventDefault();
     let href = event.target.getAttribute("href");
-    let title =
-      this.props.htmlBook.flattenChapters[
-        _.findIndex(this.props.htmlBook.flattenChapters, { href })
-      ].label;
-    RecordLocation.recordHtmlLocation(
-      this.props.currentBook.key,
-      "test",
-      title,
-      "test",
-      "0",
-      ""
+    let chapterIndex = window._.findIndex(this.props.htmlBook.flattenChapters, {
+      href,
+    });
+    let title = this.props.htmlBook.flattenChapters[chapterIndex].label;
+    let index = this.props.htmlBook.flattenChapters[chapterIndex].index;
+    await this.props.htmlBook.rendition.goToChapter(
+      index.toString(),
+      href,
+      title
     );
-    this.props.htmlBook.rendition.goToChapter(title);
     this.props.handleCurrentChapter(title);
+    this.props.handleCurrentChapterIndex(index);
   }
   UNSAFE_componentWillReceiveProps(nextProps: ContentListProps) {
     if (nextProps.htmlBook && nextProps.htmlBook !== this.props.htmlBook) {
@@ -62,7 +47,8 @@ class ContentList extends React.Component<ContentListProps, ContentListState> {
       return items.map((item: any, index: number) => {
         return (
           <li key={index} className="book-content-list">
-            {item.subitems.length > 0 &&
+            {item.subitems &&
+              item.subitems.length > 0 &&
               level <= 2 &&
               !this.state.isExpandContent && (
                 <span
@@ -86,11 +72,10 @@ class ContentList extends React.Component<ContentListProps, ContentListState> {
               onClick={this.handleJump}
               className="book-content-name"
             >
-              {item.label.indexOf("#") > -1
-                ? item.label.split("#")[0]
-                : item.label}
+              {item.label}
             </a>
-            {item.subitems.length > 0 &&
+            {item.subitems &&
+            item.subitems.length > 0 &&
             (this.state.currentIndex === index ||
               level > 2 ||
               this.state.isExpandContent) ? (
